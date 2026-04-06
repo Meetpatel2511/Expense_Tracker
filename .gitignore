@@ -1,0 +1,23 @@
+# Node dependencies
+node_modules/
+
+# Local Environment Variables (CRITICAL)
+.env
+backend/.env
+frontend/.env
+*.env.local
+
+# Build files
+frontend/build/
+dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+backend/error.log
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
