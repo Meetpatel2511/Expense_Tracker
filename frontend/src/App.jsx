@@ -13,7 +13,7 @@ import Family from "./pages/Family";
 import Profile from "./pages/Profile";
 import HelpCenter from "./pages/HelpCenter";
 
-const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 function App() {
   return (
