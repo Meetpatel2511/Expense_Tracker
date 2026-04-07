@@ -14,8 +14,23 @@ const familyRoutes = require("./routes/familyRoutes");
 const userRoutes = require("./routes/userRoutes");
 
 // Middleware
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.FRONTEND_URL?.replace(/\/$/, ""),
+  "http://localhost:3000",
+  "http://localhost:5173"
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
