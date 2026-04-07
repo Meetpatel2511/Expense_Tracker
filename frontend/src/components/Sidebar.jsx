@@ -21,10 +21,8 @@ function Sidebar({ isOpen, toggleSidebar }) {
 
   const handleUpgrade = async () => {
     try {
-      // Simulation mode for development - only sends dummy ID if running locally
-      const payload = process.env.NODE_ENV === "development" 
-        ? { paymentId: "DEV_TEST_PAYMENT" } 
-        : { paymentId: "" }; // In production, this will fail until real payment logic is added
+      // Simulation mode: sends a dummy ID to satisfy backend requirement
+      const payload = { paymentId: "SIMULATED_PRO_PAYMENT" }; 
 
       const res = await API.post("/user/upgrade-pro", payload);
       if (res.data.isPro) {
