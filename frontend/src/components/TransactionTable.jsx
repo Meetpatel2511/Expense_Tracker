@@ -108,7 +108,7 @@ function TransactionTable({ expenses = [] }) {
                     {txn.status}
                   </span>
                 </td>
-                <td style={{ textAlign: 'right', fontSize: '0.95rem', fontWeight: 700, color: txn.amount.startsWith('+') ? '#10b981' : '#fff' }}>
+                <td style={{ textAlign: 'right', fontSize: '0.95rem', fontWeight: 700, color: String(txn.amount).startsWith('+') ? '#10b981' : '#fff' }}>
                   {txn.amount}
                 </td>
               </tr>

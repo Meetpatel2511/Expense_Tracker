@@ -16,6 +16,15 @@ import HelpCenter from "./pages/HelpCenter";
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 function App() {
+  if (!clerkPubKey) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: '#1a1d29', color: '#fff', textAlign: 'center', padding: '24px' }}>
+        <h2 style={{ color: '#ef4444' }}>Configuration Error</h2>
+        <p style={{ color: '#94a3b8' }}>VITE_CLERK_PUBLISHABLE_KEY is missing. Please check your environment variables.</p>
+      </div>
+    );
+  }
+
   return (
     <ClerkProvider 
       publishableKey={clerkPubKey}

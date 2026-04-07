@@ -2,7 +2,8 @@ import React from "react";
 import { FiTrendingUp, FiTrendingDown, FiPieChart, FiDollarSign } from "react-icons/fi";
 
 function StatCard({ title, value, subtext, icon, trend, color }) {
-  const isPositive = trend && trend.startsWith('+');
+  // Safely check trend whether it is a number or a string.
+  const isPositive = typeof trend === 'number' ? trend > 0 : trend?.toString().startsWith('+');
 
   return (
     <div className="card" style={{ 
