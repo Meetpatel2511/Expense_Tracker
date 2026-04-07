@@ -19,11 +19,11 @@ exports.setBudget = async (req, res) => {
     let budget = await Budget.findOne({ user: req.user, month, year, category: cat });
 
     if (budget) {
-      budget.amount = Number(amount);
+      budget.limit = Number(amount);
     } else {
       budget = new Budget({
         user: req.user,
-        amount: Number(amount),
+        limit: Number(amount),
         month,
         year,
         category: cat
@@ -84,8 +84,8 @@ exports.getBudgetStatus = async (req, res) => {
 
     const processedBudgets = budgets.map(b => {
       const spent = spendingMap[b.category] || 0;
-      const remaining = b.amount - spent;
-      const percentage = Math.min((spent / b.amount) * 100, 100);
+      const remaining = b.limit - spent;
+      const percentage = Math.min((spent / b.limit) * 100, 100);
       
       let status = "Good";
       if (remaining < 0) status = "Over budget";
@@ -93,7 +93,7 @@ exports.getBudgetStatus = async (req, res) => {
 
       return {
         category: b.category,
-        budget: b.amount,
+        budget: b.limit,
         spent,
         remaining,
         percentage: Number(percentage.toFixed(1)),
