@@ -30,6 +30,9 @@ function Dashboard() {
   const [monthlyData, setMonthlyData] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const CACHE_KEY = `dashboard_cache_${user?.id || 'guest'}`;
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
