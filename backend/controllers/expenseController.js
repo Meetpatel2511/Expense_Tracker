@@ -4,6 +4,7 @@ const User = require("../models/User");
 const Budget = require("../models/Budget");
 const RecurringExpense = require("../models/RecurringExpense");
 const { sanitize } = require("../utils/sanitize");
+const mongoose = require("mongoose");
 
 // VALID CATEGORIES
 const VALID_CATEGORIES = [
@@ -363,125 +364,209 @@ exports.getYearlyReport = async (req, res) => {
   }
 };
 
-// GET SMART SUGGESTIONS
-exports.getSmartSuggestions = async (req, res) => {
+// HELPER: AI SMART ALERTS (CRED-LEVEL)
+const generateSmartAlerts = ({ expenses, budgets, transactions, user }) => {
+  const alerts = [];
+  const totalExpense = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const transactionCount = transactions.length;
+
+  // 1. MINIMUM DATA CHECK
+  const accountAgeInDays = (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+  
+  if (totalExpense < 1000 || transactionCount < 3 || accountAgeInDays < 3) {
+    return [{
+      type: "info",
+      text: "We're still learning your spending patterns. Insights will improve soon. ✨",
+      priority: 3,
+      icon: "FiInfo"
+    }];
+  }
+
+  // 2. CATEGORY ANALYSIS
+  const categoryMap = {};
+  expenses.forEach(exp => {
+    categoryMap[exp.category] = (categoryMap[exp.category] || 0) + exp.amount;
+  });
+
+  budgets.forEach(b => {
+    if (b.category === "Global") return; // Handle global separately if needed
+
+    const spent = categoryMap[b.category] || 0;
+    const limit = b.limit;
+    const percentage = (spent / limit) * 100;
+
+    if (spent > limit) {
+      alerts.push({
+        type: "danger",
+        text: `You've exceeded your budget for ${b.category} by ₹${(spent - limit).toLocaleString()}.`,
+        priority: 1,
+        icon: "FiAlertCircle"
+      });
+    } else if (percentage >= 90) {
+      alerts.push({
+        type: "warning",
+        text: `You're close to your limit for ${b.category}.`,
+        priority: 2,
+        icon: "FiAlertTriangle"
+      });
+    } else if (percentage >= 75) {
+      alerts.push({
+        type: "warning",
+        text: `You're approaching your budget for ${b.category}. Keep an eye on it.`,
+        priority: 2,
+        icon: "FiAlertTriangle"
+      });
+    } else if (percentage >= 50) {
+      alerts.push({
+        type: "info",
+        text: `Spending on ${b.category} is balanced so far.`,
+        priority: 3,
+        icon: "FiInfo"
+      });
+    } else {
+      alerts.push({
+        type: "success",
+        text: `You're well within your budget for ${b.category}. Nice control.`,
+        priority: 3,
+        icon: "FiCheckCircle"
+      });
+    }
+  });
+
+  // 3. NO BUDGET CASE
+  const categoriesWithBudget = new Set(budgets.map(b => b.category));
+  Object.keys(categoryMap).forEach(cat => {
+    if (!categoriesWithBudget.has(cat)) {
+      alerts.push({
+        type: "info",
+        text: `You've spent ₹${categoryMap[cat].toLocaleString()} on ${cat}. Consider setting a budget to track better.`,
+        priority: 3,
+        icon: "FiPieChart"
+      });
+    }
+  });
+
+  // Sort by priority and limit to top 3
+  return alerts
+    .sort((a, b) => a.priority - b.priority)
+    .slice(0, 3);
+};
+
+// GET DASHBOARD (NEW Unified Optimized Endpoint)
+exports.getDashboardData = async (req, res) => {
   try {
-    const expenses = await Expense.find({ user: req.user });
-    const incomes = await Income.find({ user: req.user });
-
-    const month = req.query.month ? parseInt(req.query.month) - 1 : new Date().getUTCMonth();
+    const userId = req.user;
+    const month = req.query.month ? parseInt(req.query.month) : new Date().getUTCMonth() + 1;
     const year = req.query.year ? parseInt(req.query.year) : new Date().getUTCFullYear();
-    const now = new Date(Date.UTC(year, month, 1)); // Reference date for current month logic
 
-    const budget = await Budget.findOne({ user: req.user, month, year });
+    // Time Ranges (UTC for consistency)
+    const start = new Date(Date.UTC(year, month - 1, 1));
+    const end = new Date(Date.UTC(year, month, 1));
 
-    let totalExpense = 0;
-    let totalIncome = 0;
-    let categoryMap = {};
+    // Previous Month (for comparison)
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const prevStart = new Date(Date.UTC(prevYear, prevMonth - 1, 1));
+    const prevEnd = new Date(Date.UTC(prevYear, prevMonth, 1));
 
-    // Current Month Totals
-    const currentMonthExpenses = expenses.filter(exp => {
-      const d = new Date(exp.date);
-      return d.getMonth() === month && d.getFullYear() === year;
+    // Parallel fetching with .lean() for performance
+    const [
+      user,
+      currentExpenses,
+      currentIncomes,
+      prevExpenses,
+      prevIncomes,
+      budgets,
+      allTimeExpense,
+      allTimeIncome,
+      yearlyReport
+    ] = await Promise.all([
+      User.findById(userId).lean(),
+      Expense.find({ user: userId, date: { $gte: start, $lt: end } }).sort({ date: -1 }).lean(),
+      Income.find({ user: userId, date: { $gte: start, $lt: end } }).lean(),
+      Expense.find({ user: userId, date: { $gte: prevStart, $lt: prevEnd } }).lean(),
+      Income.find({ user: userId, date: { $gte: prevStart, $lt: prevEnd } }).lean(),
+      Budget.find({ user: userId, month: month - 1, year }).lean(),
+      Expense.aggregate([
+        { $match: { user: new mongoose.Types.ObjectId(userId), date: { $lt: end } } },
+        { $group: { _id: null, total: { $sum: "$amount" } } }
+      ]),
+      Income.aggregate([
+        { $match: { user: new mongoose.Types.ObjectId(userId), date: { $lt: end } } },
+        { $group: { _id: null, total: { $sum: "$amount" } } }
+      ]),
+      // Yearly stats part (mimic getYearlyReport logic)
+      Promise.resolve().then(async () => {
+        const yStart = new Date(Date.UTC(year, 0, 1));
+        const yEnd = new Date(Date.UTC(year + 1, 0, 1));
+        const [yExp, yInc] = await Promise.all([
+          Expense.find({ user: userId, date: { $gte: yStart, $lt: yEnd } }).lean(),
+          Income.find({ user: userId, date: { $gte: yStart, $lt: yEnd } }).lean()
+        ]);
+        const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+          month: new Date(0, i).toLocaleString('default', { month: 'short' }),
+          expense: 0,
+          income: 0
+        }));
+        yExp.forEach(e => monthlyData[new Date(e.date).getUTCMonth()].expense += e.amount);
+        yInc.forEach(i => monthlyData[new Date(i.date).getUTCMonth()].income += i.amount);
+        return monthlyData;
+      })
+    ]);
+
+    // Current totals
+    const totalExpense = currentExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalIncome = currentIncomes.reduce((sum, i) => sum + i.amount, 0);
+    const savings = totalIncome - totalExpense;
+    const balance = (allTimeIncome[0]?.total || 0) - (allTimeExpense[0]?.total || 0);
+
+    // Prev month comparison for changes
+    const lastMonthExpense = prevExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const lastMonthSavings = prevIncomes.reduce((sum, i) => sum + i.amount, 0) - lastMonthExpense;
+
+    const expenseChange = lastMonthExpense > 0 
+      ? Number(((totalExpense - lastMonthExpense) / lastMonthExpense * 100).toFixed(1)) 
+      : 0;
+    const savingsChange = lastMonthSavings !== 0 
+      ? Number(((savings - lastMonthSavings) / Math.abs(lastMonthSavings) * 100).toFixed(1)) 
+      : 0;
+
+    // Category breakdown
+    const categoryMap = {};
+    currentExpenses.forEach(e => {
+        categoryMap[e.category] = (categoryMap[e.category] || 0) + e.amount;
     });
 
-    currentMonthExpenses.forEach(exp => {
-      totalExpense += exp.amount;
-      categoryMap[exp.category] = (categoryMap[exp.category] || 0) + exp.amount;
+    // Generate Smart Alerts
+    const alerts = generateSmartAlerts({ 
+      expenses: currentExpenses, 
+      budgets, 
+      transactions: currentExpenses, 
+      user 
     });
 
-    const currentMonthIncomes = incomes.filter(inc => {
-      const d = new Date(inc.date);
-      return d.getMonth() === month && d.getFullYear() === year;
-    });
-
-    currentMonthIncomes.forEach(inc => {
-      totalIncome += inc.amount;
-    });
-
-    const alerts = [];
-
-    // 1. Budget Alerts (Deterministic - Global & Categories)
-    const budgets = await Budget.find({ user: req.user, month, year });
-
-    if (budgets.length > 0) {
-      for (const b of budgets) {
-        const isGlobal = b.category === "Global";
-        const spent = isGlobal ? totalExpense : (categoryMap[b.category] || 0);
-        const percentUsed = (spent / b.amount) * 100;
-        const catName = isGlobal ? "Global budget" : `${b.category} budget`;
-
-        if (spent > b.amount) {
-          alerts.push({ 
-            type: "danger", 
-            text: `🚨 ${catName} exceeded by ₹${(spent - b.amount).toLocaleString()}`, 
-            icon: "FiAlertOctagon" 
-          });
-        } else if (percentUsed > 80) {
-          alerts.push({ 
-            type: "warning", 
-            text: `⚠️ ${catName} is ${percentUsed.toFixed(0)}% full. Careful!`, 
-            icon: "FiAlertTriangle" 
-          });
-        }
-      }
-    }
-
-    // 2. Weekly Velocity (Deterministic)
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(now.getDate() - 7);
-    const fourteenDaysAgo = new Date(now);
-    fourteenDaysAgo.setDate(now.getDate() - 14);
-
-    const lastSevenDaysTotal = expenses.filter(exp => new Date(exp.date) >= sevenDaysAgo)
-                                      .reduce((sum, exp) => sum + exp.amount, 0);
-    const priorSevenDaysTotal = expenses.filter(exp => {
-      const d = new Date(exp.date);
-      return d >= fourteenDaysAgo && d < sevenDaysAgo;
-    }).reduce((sum, exp) => sum + exp.amount, 0);
-
-    if (lastSevenDaysTotal > priorSevenDaysTotal && priorSevenDaysTotal > 0) {
-      const increase = ((lastSevenDaysTotal - priorSevenDaysTotal) / priorSevenDaysTotal) * 100;
-      alerts.push({ type: "warning", text: `📈 Spending increased by ${increase.toFixed(0)}% this week`, icon: "FiTrendingUp" });
-    }
-
-    // 3. Category Spikes (Deterministic)
-    for (let category in categoryMap) {
-      const percent = totalExpense > 0 ? (categoryMap[category] / totalExpense) * 100 : 0;
-      if (percent > 40) {
-        alerts.push({ type: "info", text: `💡 You're spending too much on ${category} (${percent.toFixed(0)}% of total)`, icon: "FiInfo" });
-      }
-    }
-
-    // 4. Financial Health Alerts (Deterministic)
-    const ruleAlerts = [];
-
-    // Rule C: Savings & Income Insights
-    if (totalIncome > 0) {
-      const savingsRate = ((totalIncome - totalExpense) / totalIncome) * 100;
-      if (savingsRate < 10 && totalExpense > 0) {
-        ruleAlerts.push({ type: "danger", text: "⚠️ Low savings alert! Expenses are currently 90%+ of income.", icon: "FiZap" });
-      } else if (savingsRate > 30) {
-        ruleAlerts.push({ type: "success", text: "🌟 Impressive! You've saved over 30% of your income so far.", icon: "FiCheckCircle" });
-      }
-    }
-
-    // Rule D: Action Required
-    if (totalIncome === 0 && totalExpense > 0) {
-      ruleAlerts.push({ type: "info", text: "📝 Consider logging your income to see your actual savings rate.", icon: "FiDollarSign" });
-    }
-
-    // Merge with deterministic alerts
-    const finalAlerts = [...alerts, ...ruleAlerts];
-
-    res.json({ 
-      totalSpending: totalExpense, 
-      totalIncome, 
-      alerts: finalAlerts.slice(0, 5) 
+    res.json({
+      summary: {
+        totalIncome,
+        totalExpense,
+        savings,
+        balance,
+        expenseChange,
+        savingsChange
+      },
+      categories: categoryMap,
+      budgets: {
+        categories: budgets.map(b => ({ category: b.category, budget: b.limit })),
+        global: budgets.find(b => b.category === "Global") ? { budget: budgets.find(b => b.category === "Global").limit } : null
+      },
+      recentTransactions: currentExpenses.slice(0, 5),
+      monthlyData: yearlyReport,
+      alerts,
+      lastUpdated: Date.now()
     });
 
   } catch (error) {
-    console.error("Smart Suggestions Error:", error);
+    console.error("Dashboard Endpoint Error:", error);
     res.status(500).json({ error: error.message });
   }
 };

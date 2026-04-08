@@ -28,45 +28,62 @@ function Dashboard() {
   const [budget, setBudget] = useState({});
   const [categories, setCategories] = useState({});
   const [monthlyData, setMonthlyData] = useState([]);
-  const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const CACHE_KEY = `dashboard_cache_${user?.id || 'guest'}`;
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  const fetchData = useCallback(async (isInitial = true) => {
     try {
-      setLoading(true);
-      const params = `?month=${selectedMonth}&year=${selectedYear}`;
-      
-      const [sumRes, expRes, yearRes, budgetRes, catRes] = await Promise.all([
-        API.get(`/expense/summary${params}`).catch(() => ({ data: {} })),
-        API.get(`/expense${params}`).catch(() => ({ data: [] })),
-        API.get(`/expense/yearly?year=${selectedYear}`).catch(() => ({ data: { monthlyData: [] } })),
-        API.get(`/budget?month=${selectedMonth}&year=${selectedYear}`).catch(() => ({ data: {} })),
-        API.get(`/expense/categories${params}`).catch(() => ({ data: { categories: {} } }))
-      ]);
-
-      setSummary(sumRes.data || {});
-      setExpenses(expRes.data?.data || []);
-      setMonthlyData(yearRes.data?.monthlyData || []);
-      setBudget(budgetRes.data || {});
-      setCategories(catRes.data?.categories || {});
-
-      if (isPro) {
-        try {
-          const sugRes = await API.get(`/expense/suggestions${params}`);
-          setAlerts(sugRes.data?.alerts || []);
-        } catch (err) {
-          console.warn("Could not fetch AI suggestions");
+      if (isInitial) {
+        // 1. Check Cache first for "Instant" feel
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_TTL) {
+            setSummary(data.summary);
+            setExpenses(data.recentTransactions);
+            setMonthlyData(data.monthlyData);
+            setBudget(data.budgets);
+            setCategories(data.categories);
+            setAlerts(data.alerts);
+            setLastUpdated(data.lastUpdated);
+            setLoading(false);
+            // Even if cache is valid, we'll refresh in background quietly
+            setIsRefreshing(true);
+          }
         }
       }
 
+      const params = `?month=${selectedMonth}&year=${selectedYear}`;
+      const res = await API.get(`/expense/dashboard${params}`);
+      const freshData = res.data;
+
+      // 2. Update State
+      setSummary(freshData.summary);
+      setExpenses(freshData.recentTransactions);
+      setMonthlyData(freshData.monthlyData);
+      setBudget(freshData.budgets);
+      setCategories(freshData.categories);
+      setAlerts(freshData.alerts);
+      setLastUpdated(freshData.lastUpdated);
+
+      // 3. Update Cache
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+        data: freshData,
+        timestamp: Date.now()
+      }));
+
     } catch (err) {
       console.error("Dashboard fetch error:", err);
-      setError("Failed to load dashboard data");
+      // Only show error if we have no data at all
+      if (loading) setError("Failed to load dashboard data");
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
-  }, [selectedMonth, selectedYear, isPro]);
+  }, [selectedMonth, selectedYear, CACHE_KEY, CACHE_TTL, loading]);
 
   useEffect(() => {
     fetchData();

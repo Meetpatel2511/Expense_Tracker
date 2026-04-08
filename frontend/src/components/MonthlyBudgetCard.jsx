@@ -37,12 +37,13 @@ function MonthlyBudgetCard({ budget = {}, categories = {}, selectedMonth, select
   const displayCategories = categoriesPresent.map(catName => {
     const config = DEFAULT_CONFIG[catName] || DEFAULT_CONFIG["Other"];
     
-    // M6: Find real budget from the database status
+    // Find real budget from the database status
     const dbBudget = budget.categories?.find(b => b.category === catName);
-    const targetLimit = dbBudget ? dbBudget.budget : 5000; // Fallback to 5k if no limit set
+    const targetLimit = dbBudget ? dbBudget.budget : 0; 
     
     const spent = categories[catName] || 0;
-    const progress = (spent / targetLimit) * 100;
+    const progress = targetLimit > 0 ? (spent / targetLimit) * 100 : 0;
+    const remaining = targetLimit > 0 ? (targetLimit - spent) : null;
     
     return {
       name: catName,
@@ -51,14 +52,15 @@ function MonthlyBudgetCard({ budget = {}, categories = {}, selectedMonth, select
       color: config.color,
       icon: config.icon,
       progress,
-      isOver: progress > 100
+      remaining,
+      isOver: targetLimit > 0 && spent > targetLimit
     };
   });
 
-  // M7: Correct path for global budget
+  // Calculate global summary correctly
   const globalBudget = budget?.global?.budget || 0;
   const totalSpent = Object.values(categories).reduce((sum, val) => sum + val, 0);
-  const remaining = globalBudget > 0 ? (globalBudget - totalSpent) : 0;
+  const globalRemaining = globalBudget > 0 ? (globalBudget - totalSpent) : null;
 
   return (
     <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -95,16 +97,18 @@ function MonthlyBudgetCard({ budget = {}, categories = {}, selectedMonth, select
                 </div>
                 <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>₹{cat.spent.toLocaleString()}</div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>Limit: ₹{cat.target.toLocaleString()}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                        {cat.target > 0 ? `Limit: ₹${cat.target.toLocaleString()}` : "No budget set"}
+                    </div>
                 </div>
               </div>
               
               <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '10px', overflow: 'hidden' }}>
                 <div 
                     style={{ 
-                        width: `${Math.min(cat.progress, 100)}%`, 
+                        width: `${cat.target > 0 ? Math.min(cat.progress, 100) : 0}%`, 
                         height: '100%', 
-                        backgroundColor: cat.isOver ? '#ef4444' : cat.color, 
+                        backgroundColor: cat.isOver ? '#ef4444' : (cat.target > 0 ? cat.color : 'transparent'), 
                         borderRadius: '10px',
                         transition: 'width 1s ease-out'
                     }} 
@@ -126,11 +130,19 @@ function MonthlyBudgetCard({ budget = {}, categories = {}, selectedMonth, select
           justifyContent: 'space-between'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--bg-accent)' }}></div>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: globalRemaining !== null ? (globalRemaining >= 0 ? 'var(--bg-accent)' : '#ef4444') : 'var(--text-muted)' }}></div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Monthly Remaining</div>
         </div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--bg-accent)' }}>
-            ₹{remaining.toLocaleString()}
+        <div style={{ 
+            fontSize: '1.1rem', 
+            fontWeight: 800, 
+            color: globalRemaining !== null ? (globalRemaining >= 0 ? 'var(--bg-accent)' : '#ef4444') : 'var(--text-muted)' 
+        }}>
+            {globalRemaining !== null ? (
+                globalRemaining >= 0 
+                ? `₹${globalRemaining.toLocaleString()}` 
+                : `Over budget by ₹${Math.abs(globalRemaining).toLocaleString()}`
+            ) : "No budget set"}
         </div>
       </div>
     </div>

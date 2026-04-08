@@ -8,7 +8,7 @@ const {
   getCategoryStats,
   getInsights,
   getYearlyReport,
-  getSmartSuggestions,
+  getDashboardData,
   deleteExpense,
   updateExpense,
   getCategories,
@@ -17,6 +17,9 @@ const {
 
 const authMiddleware = require("../middleware/authMiddleware");
 const requirePro = require("../middleware/proMiddleware");
+
+// Optimized Unified Dashboard
+router.get("/dashboard", authMiddleware, getDashboardData);
 
 // Add expense
 router.post("/add", authMiddleware, addExpense);
@@ -38,9 +41,6 @@ router.get("/insights", authMiddleware, getInsights);
 
 // Yearly report (monthly data)
 router.get("/yearly", authMiddleware, getYearlyReport);
-
-// Smart suggestions (Pro only)
-router.get("/suggestions", authMiddleware, requirePro, getSmartSuggestions);
 
 // Valid categories list
 router.get("/category-list", getCategories);
