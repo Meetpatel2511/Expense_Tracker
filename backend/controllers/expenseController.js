@@ -571,6 +571,35 @@ exports.getDashboardData = async (req, res) => {
   }
 };
 
+// GET ALERTS ONLY (for Notification Bell)
+exports.getAlertsOnly = async (req, res) => {
+  try {
+    const userId = req.user;
+    const month = req.query.month ? parseInt(req.query.month) : new Date().getUTCMonth() + 1;
+    const year = req.query.year ? parseInt(req.query.year) : new Date().getUTCFullYear();
+
+    const start = new Date(Date.UTC(year, month - 1, 1));
+    const end = new Date(Date.UTC(year, month, 1));
+
+    const [user, expenses, budgets] = await Promise.all([
+      User.findById(userId).lean(),
+      Expense.find({ user: userId, date: { $gte: start, $lt: end } }).lean(),
+      Budget.find({ user: userId, month: month - 1, year }).lean()
+    ]);
+
+    const alerts = generateSmartAlerts({ 
+      expenses, 
+      budgets, 
+      transactions: expenses, 
+      user 
+    });
+
+    res.json({ alerts });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // ADD RECURRING EXPENSE
 exports.addRecurringExpense = async (req, res) => {
   try {

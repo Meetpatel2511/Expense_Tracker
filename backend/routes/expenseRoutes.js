@@ -9,6 +9,7 @@ const {
   getInsights,
   getYearlyReport,
   getDashboardData,
+  getAlertsOnly,
   deleteExpense,
   updateExpense,
   getCategories,
@@ -41,6 +42,9 @@ router.get("/insights", authMiddleware, getInsights);
 
 // Yearly report (monthly data)
 router.get("/yearly", authMiddleware, getYearlyReport);
+
+// Smart suggestions (Pro only for Notification Bell)
+router.get("/suggestions", authMiddleware, requirePro, getAlertsOnly);
 
 // Valid categories list
 router.get("/category-list", getCategories);
