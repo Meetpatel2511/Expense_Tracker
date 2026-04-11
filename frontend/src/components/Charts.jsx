@@ -6,16 +6,22 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  CartesianGrid
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
 } from "recharts";
+
+const COLORS = ["#7c3aed", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#06b6d4"];
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
       <div className="custom-tooltip">
-        <p>{label}</p>
+        <p>{label || payload[0].name}</p>
         {payload.map((entry, index) => (
-          <div key={index} className="value" style={{ color: entry.color }}>
+          <div key={index} className="value" style={{ color: entry.fill || entry.color }}>
             {entry.name}: ₹{Number(entry.value).toLocaleString("en-IN")}
           </div>
         ))}
@@ -24,6 +30,46 @@ const CustomTooltip = ({ active, payload, label }) => {
   }
   return null;
 };
+
+export function CategoryPieChart({ data = {} }) {
+  const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
+  
+  if (chartData.length === 0) {
+    return (
+      <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+        No category data available
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ width: "100%", height: 300 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={chartData}
+            cx="50%"
+            cy="50%"
+            innerRadius={60}
+            outerRadius={80}
+            paddingAngle={5}
+            dataKey="value"
+          >
+            {chartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+            ))}
+          </Pie>
+          <Tooltip content={<CustomTooltip />} />
+          <Legend 
+            verticalAlign="bottom" 
+            align="center"
+            wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 function Charts({ monthlyData = [], hideHeader = false }) {
   return (

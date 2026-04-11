@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import API from "../utils/api";
 import { useUser } from "@clerk/clerk-react";
-import { FiDollarSign, FiTrendingUp, FiCreditCard, FiPieChart, FiDownload, FiZap, FiLock, FiCalendar } from "react-icons/fi";
+import { FiDollarSign, FiTrendingUp, FiCreditCard, FiPieChart, FiDownload, FiZap, FiLock, FiCalendar, FiFileText } from "react-icons/fi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { exportToExcel } from "../utils/exportUtils";
 
 import StatCard from "../components/StatCard";
-import Charts from "../components/Charts";
+import Charts, { CategoryPieChart } from "../components/Charts";
 import MonthlyBudgetCard from "../components/MonthlyBudgetCard";
 import TransactionTable from "../components/TransactionTable";
 import DashboardAlerts from "../components/DashboardAlerts";
@@ -33,6 +34,10 @@ function Dashboard() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const savingsRate = summary?.totalIncome > 0 
+    ? Math.round((summary?.savings / summary?.totalIncome) * 100) 
+    : 0;
 
   const CACHE_KEY = `dashboard_cache_${user?.id || 'guest'}`;
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -165,6 +170,22 @@ function Dashboard() {
     }
   };
 
+  const handleExportExcel = () => {
+    if (!isPro) {
+        alert("Pro Feature 🔒\n\nUpgrade to Pro to export as Excel 📊");
+        return;
+    }
+
+    const fileName = `FinTrack_Data_${selectedMonth}_${selectedYear}`;
+    const success = exportToExcel(expenses, fileName);
+    
+    if (success) {
+        // Optional: show a toast or notification
+    } else {
+        alert("Failed to generate Excel file.");
+    }
+  };
+
   const handleMonthChange = (m, y) => {
     setSelectedMonth(m);
     setSelectedYear(y);
@@ -263,6 +284,28 @@ function Dashboard() {
             {isPro ? <FiDownload size={18} /> : "🔒"} 
             <span className="hide-mobile">{isPro ? "Download Report" : "Unlock Pro"}</span>
         </button>
+
+        <button 
+            onClick={handleExportExcel} 
+            title={isPro ? "Export to Excel" : "Pro Feature - Upgrade to Export"}
+            className={`btn-secondary`}
+            style={{ 
+                padding: '10px 20px', 
+                borderRadius: '12px',
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                opacity: isPro ? 1 : 0.7,
+                cursor: 'pointer',
+                width: 'auto',
+                transition: 'all 0.3s ease'
+            }}
+        >
+            <FiFileText size={18} />
+            <span className="hide-mobile">Export Excel</span>
+        </button>
       </div>
 
       {/* Row 1: Stat Cards */}
@@ -310,8 +353,28 @@ function Dashboard() {
                         <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>AI Smart Alerts</h3>
                     </div>
                   </div>
-                  <DashboardAlerts alerts={alerts} />
-               </div>
+                   <DashboardAlerts alerts={alerts} />
+                   
+                   {/* Saving Rate Insight (Pro Feature) */}
+                   <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Savings Efficiency</span>
+                            <span style={{ fontSize: '1rem', fontWeight: 800, color: '#10b981' }}>{savingsRate}%</span>
+                        </div>
+                        <div style={{ height: '8px', width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                            <div style={{ 
+                                height: '100%', 
+                                width: `${Math.min(100, Math.max(0, savingsRate))}%`, 
+                                background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
+                                borderRadius: '10px',
+                                transition: 'width 1s ease-out'
+                            }}></div>
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                            {savingsRate >= 20 ? "Excellent! You're above the 20% savings rule." : "Goal: Try to save at least 20% of your income."}
+                        </p>
+                   </div>
+                </div>
             ) : (
                 <div className="card" style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', inset: 0, backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
@@ -354,6 +417,15 @@ function Dashboard() {
             selectedYear={selectedYear} 
           />
           <HealthScoreCard isPro={isPro} />
+          
+          {/* New Category Breakdown Card */}
+          <div className="card">
+              <div style={{ marginBottom: '20px' }}>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Category Breakdown</h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Distribution of expenses</p>
+              </div>
+              <CategoryPieChart data={categories} />
+          </div>
         </div>
       </div>
 
