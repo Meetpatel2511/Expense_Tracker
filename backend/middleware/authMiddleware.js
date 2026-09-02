@@ -2,7 +2,31 @@ const { clerkClient, ClerkExpressRequireAuth } = require("@clerk/clerk-sdk-node"
 const User = require("../models/User");
 
 // 1. Clerk verifies the incoming Bearer token natively
-const requireAuth = ClerkExpressRequireAuth();
+const requireAuth = (req, res, next) => {
+  if (!process.env.CLERK_SECRET_KEY) {
+    return res.status(401).json({
+      message: "Authentication required: Missing Clerk configuration or session token"
+    });
+  }
+
+  try {
+    const authHandler = ClerkExpressRequireAuth({
+      onError: () => {
+        return res.status(401).json({ message: "Unauthorized: Invalid or expired session token" });
+      }
+    });
+
+    return authHandler(req, res, (err) => {
+      if (err) {
+        return res.status(401).json({ message: "Unauthorized: Invalid or expired session token" });
+      }
+      next();
+    });
+  } catch (err) {
+    console.error("Clerk Auth Middleware Error:", err.message);
+    return res.status(401).json({ message: "Unauthorized: Authentication verification failed" });
+  }
+};
 
 // 2. Custom interop middleware to sync Clerk with MongoDB seamlessly
 const syncClerkIdToMongoId = async (req, res, next) => {
@@ -19,13 +43,12 @@ const syncClerkIdToMongoId = async (req, res, next) => {
     if (!user) {
       // First time this Clerk user has hit the backend API
       try {
-        // Send a dummy paymentId for development mode
         const clerkUser = await clerkClient.users.getUser(clerkId);
         const emailRecord = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId);
         const email = emailRecord ? emailRecord.emailAddress : "unknown@clerk.dev";
         const name = (clerkUser.firstName || "") + " " + (clerkUser.lastName || "");
 
-        // Check if email already existed from legacy JWT auth
+        // Check if email already existed from legacy auth
         user = await User.findOne({ email });
         
         if (user) {
@@ -35,7 +58,7 @@ const syncClerkIdToMongoId = async (req, res, next) => {
         } else {
           // Complete new user registration
           user = new User({
-            name: name.trim() || 'New User',
+            name: name.trim() || "New User",
             email,
             clerkId,
           });
@@ -47,7 +70,7 @@ const syncClerkIdToMongoId = async (req, res, next) => {
       }
     }
 
-    // Attach the MongoDB ObjectID to req.user safely (Legacy interop support)
+    // Attach the MongoDB ObjectID to req.user
     req.user = user._id;
     
     next();
