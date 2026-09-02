@@ -154,35 +154,38 @@ exports.getExpenses = async (req, res) => {
 const processRecurringExpenses = async (userId) => {
   try {
     const now = new Date();
-    const recurring = await RecurringExpense.find({ user: userId, isActive: true, nextExecutionDate: { $lte: now } });
+    const recurring = await RecurringExpense.find({ user: userId, nextDate: { $lte: now } });
 
     for (const rec of recurring) {
-      let nextDate = new Date(rec.nextExecutionDate);
-      
+      let currentNextDate = new Date(rec.nextDate);
+      const initialNextDate = new Date(rec.nextDate);
+      const freq = (rec.frequency || "Monthly").toLowerCase();
+
       // Keep processing if missed multiple intervals (e.g. daily missed for 3 days)
-      while (nextDate <= now) {
+      while (currentNextDate <= now) {
         // Create the actual expense entry
         const newExpense = new Expense({
           user: userId,
           amount: rec.amount,
           category: rec.category,
-          note: `[Recurring] ${rec.note || ""}`,
-          date: new Date(nextDate)
+          note: `[Recurring] ${rec.note || ""}`.trim(),
+          date: new Date(currentNextDate)
         });
         await newExpense.save();
 
         // Increment based on frequency
-        if (rec.frequency === "daily") nextDate.setDate(nextDate.getDate() + 1);
-        else if (rec.frequency === "weekly") nextDate.setDate(nextDate.getDate() + 7);
-        else if (rec.frequency === "monthly") nextDate.setMonth(nextDate.getMonth() + 1);
-        else if (rec.frequency === "yearly") nextDate.setFullYear(nextDate.getFullYear() + 1);
+        if (freq === "daily") currentNextDate.setDate(currentNextDate.getDate() + 1);
+        else if (freq === "weekly") currentNextDate.setDate(currentNextDate.getDate() + 7);
+        else if (freq === "monthly") currentNextDate.setMonth(currentNextDate.getMonth() + 1);
+        else if (freq === "yearly") currentNextDate.setFullYear(currentNextDate.getFullYear() + 1);
+        else break;
         
         // Safety break if something goes wrong with dates
-        if (rec.frequency === "daily" && nextDate < rec.nextExecutionDate) break; 
+        if (currentNextDate <= initialNextDate) break; 
       }
 
-      rec.nextExecutionDate = nextDate;
-      rec.lastProcessedAt = now;
+      rec.nextDate = currentNextDate;
+      rec.lastProcessed = now;
       await rec.save();
     }
   } catch (err) {
@@ -666,7 +669,7 @@ exports.addRecurringExpense = async (req, res) => {
     }
 
     const start = startDate ? new Date(startDate) : new Date();
-    const nextExecutionDate = start < new Date() ? new Date() : start;
+    const nextDate = start < new Date() ? new Date() : start;
 
     const recurring = new RecurringExpense({
       user: req.user,
@@ -674,8 +677,8 @@ exports.addRecurringExpense = async (req, res) => {
       category: sanitize(trimmedCategory, 50),
       note: note ? sanitize(note, 200) : "",
       frequency: normalizedFrequency,
-      startDate: start,
-      nextExecutionDate
+      nextDate,
+      lastProcessed: null
     });
 
     await recurring.save();
