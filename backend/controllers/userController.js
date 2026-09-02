@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Expense = require("../models/Expense");
 const Income = require("../models/Income");
+const { verifyRazorpaySignature } = require("../utils/paymentVerification");
 
 // GET /api/user/profile
 exports.getProfile = async (req, res) => {
@@ -65,14 +66,61 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+// POST /api/user/create-order (Razorpay test order generation)
+exports.createOrder = async (req, res) => {
+  try {
+    const amount = 19900; // ₹199 in paise
+    const currency = "INR";
+    const receipt = `rcpt_${Date.now()}`;
+    const orderId = `order_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+    res.json({
+      orderId,
+      amount,
+      currency,
+      receipt,
+      keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_demo_key"
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // POST /api/user/upgrade-pro
 exports.upgradeToPro = async (req, res) => {
   try {
-    const { paymentId } = req.body;
+    const {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature,
+      paymentId = razorpay_payment_id,
+      orderId = razorpay_order_id,
+      signature = razorpay_signature
+    } = req.body || {};
 
-    // Allow upgrades WITHOUT paymentId in development for easier testing
-    if (!paymentId && process.env.NODE_ENV !== "development") {
-      return res.status(400).json({ message: "Payment verification failed. Payment ID is required." });
+    if (!paymentId || typeof paymentId !== "string" || !paymentId.trim()) {
+      return res.status(400).json({ message: "Payment verification failed: razorpay_payment_id is required." });
+    }
+
+    if (!orderId || typeof orderId !== "string" || !orderId.trim()) {
+      return res.status(400).json({ message: "Payment verification failed: razorpay_order_id is required." });
+    }
+
+    if (!signature || typeof signature !== "string" || !signature.trim()) {
+      return res.status(400).json({ message: "Payment verification failed: razorpay_signature is required." });
+    }
+
+    // Cryptographically verify the HMAC SHA-256 signature
+    const isValidSignature = verifyRazorpaySignature({
+      orderId: orderId.trim(),
+      paymentId: paymentId.trim(),
+      signature: signature.trim()
+    });
+
+    if (!isValidSignature) {
+      return res.status(400).json({ 
+        message: "Payment verification failed: invalid signature. Pro upgrade rejected." 
+      });
     }
 
     const user = await User.findById(req.user);
@@ -86,6 +134,7 @@ exports.upgradeToPro = async (req, res) => {
 
     user.isPro = true;
     user.proSince = new Date();
+    user.paymentId = paymentId.trim();
     await user.save();
 
     res.json({ 

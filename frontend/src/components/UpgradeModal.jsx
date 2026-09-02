@@ -20,8 +20,8 @@ function UpgradeModal({ onClose, onUpgrade }) {
           <RazorpayCheckout 
             totalAmount={199}
             onCancel={() => setShowCheckout(false)}
-            onSuccess={() => {
-              onUpgrade();
+            onSuccess={(paymentData) => {
+              onUpgrade(paymentData);
               onClose();
             }}
           />

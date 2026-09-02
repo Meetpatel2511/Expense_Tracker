@@ -1,10 +1,49 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { FiX, FiCreditCard, FiSmartphone, FiShield, FiArrowRight, FiCheckCircle } from "react-icons/fi";
+import API from "../utils/api";
+
+const DEFAULT_TEST_SECRET = "rzp_test_secret_portfolio_demo";
+
+async function generateHmacSha256(secret, message) {
+  const enc = new TextEncoder();
+  const key = await window.crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await window.crypto.subtle.sign(
+    "HMAC",
+    key,
+    enc.encode(message)
+  );
+  return Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 function RazorpayCheckout({ totalAmount = 199, onCancel, onSuccess }) {
   const [step, setStep] = useState(1); // 1: Method, 2: Card Intro, 3: OTP, 4: Success
   const [loading, setLoading] = useState(false);
+  const [orderData, setOrderData] = useState(null);
+
+  useEffect(() => {
+    // Generate test order from backend API
+    const initOrder = async () => {
+      try {
+        const res = await API.post("/user/create-order");
+        setOrderData(res.data);
+      } catch (err) {
+        // Fallback for offline/standalone preview
+        setOrderData({
+          orderId: `order_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+        });
+      }
+    };
+    initOrder();
+  }, []);
 
   const handleMethodSelect = () => {
     setLoading(true);
@@ -22,15 +61,24 @@ function RazorpayCheckout({ totalAmount = 199, onCancel, onSuccess }) {
     }, 1500);
   };
 
-  const handleVerifyOTP = () => {
+  const handleVerifyOTP = async () => {
     setLoading(true);
+    const orderId = orderData?.orderId || `order_test_${Date.now()}`;
+    const paymentId = `pay_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const secret = import.meta.env?.VITE_RAZORPAY_KEY_SECRET || DEFAULT_TEST_SECRET;
+    const signature = await generateHmacSha256(secret, `${orderId}|${paymentId}`);
+
     setTimeout(() => {
       setLoading(false);
       setStep(4);
       setTimeout(() => {
-        onSuccess();
-      }, 2000);
-    }, 2000);
+        onSuccess({
+          razorpay_order_id: orderId,
+          razorpay_payment_id: paymentId,
+          razorpay_signature: signature
+        });
+      }, 1500);
+    }, 1500);
   };
 
   const checkoutJSX = (

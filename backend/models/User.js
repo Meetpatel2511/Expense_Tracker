@@ -25,6 +25,9 @@ const userSchema = new mongoose.Schema({
   },
   proSince: {
     type: Date
+  },
+  paymentId: {
+    type: String
   }
 }, { timestamps: true });
 

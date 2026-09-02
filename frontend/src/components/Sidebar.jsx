@@ -19,10 +19,13 @@ function Sidebar({ isOpen, toggleSidebar }) {
   const { isPro, refreshProStatus } = usePro();
   const [showModal, setShowModal] = useState(false);
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = async (paymentData) => {
     try {
-      // Simulation mode: sends a dummy ID to satisfy backend requirement
-      const payload = { paymentId: "SIMULATED_PRO_PAYMENT" }; 
+      const payload = paymentData || {
+        razorpay_payment_id: "pay_test_" + Date.now(),
+        razorpay_order_id: "order_test_" + Date.now(),
+        razorpay_signature: "test_sig"
+      };
 
       const res = await API.post("/user/upgrade-pro", payload);
       if (res.data.isPro) {
