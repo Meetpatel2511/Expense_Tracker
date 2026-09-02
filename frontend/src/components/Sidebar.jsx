@@ -20,21 +20,16 @@ function Sidebar({ isOpen, toggleSidebar }) {
   const [showModal, setShowModal] = useState(false);
 
   const handleUpgrade = async (paymentData) => {
+    if (!paymentData) return;
     try {
-      const payload = paymentData || {
-        razorpay_payment_id: "pay_test_" + Date.now(),
-        razorpay_order_id: "order_test_" + Date.now(),
-        razorpay_signature: "test_sig"
-      };
-
-      const res = await API.post("/user/upgrade-pro", payload);
+      const res = await API.post("/user/upgrade-pro", paymentData);
       if (res.data.isPro) {
         await refreshProStatus();
         setShowModal(false);
         alert("🎉 You are now a Pro user! All features unlocked.");
       }
     } catch (err) {
-      alert("Upgrade failed. Please try again.");
+      alert(err.response?.data?.message || "Upgrade failed. Please try again.");
       console.error("Upgrade error:", err);
     }
   };
