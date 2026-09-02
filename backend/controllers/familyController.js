@@ -2,24 +2,34 @@ const Family = require("../models/Family");
 const User = require("../models/User");
 const Expense = require("../models/Expense");
 const { sanitize } = require("../utils/sanitize");
+const { isValidObjectId } = require("../middleware/validation");
 
 // CREATE FAMILY
 exports.createFamily = async (req, res) => {
   try {
     const { name } = req.body;
 
-    if (!name || !name.trim()) {
+    if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ message: "Family name is required" });
+    }
+
+    const trimmedName = name.trim();
+    if (trimmedName.length < 2 || trimmedName.length > 50) {
+      return res.status(400).json({ message: "Family name must be between 2 and 50 characters" });
     }
 
     // Check if user already has a family
     const user = await User.findById(req.user);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     if (user.family) {
       return res.status(400).json({ message: "You already belong to a family" });
     }
 
     const family = new Family({
-      name: sanitize(name, 50),
+      name: sanitize(trimmedName, 50),
       members: [req.user]
     });
 
@@ -39,12 +49,16 @@ exports.joinFamily = async (req, res) => {
   try {
     const { familyId } = req.body;
 
-    if (!familyId) {
-      return res.status(400).json({ message: "Family ID is required" });
+    if (!familyId || !isValidObjectId(familyId)) {
+      return res.status(400).json({ message: "A valid Family ID is required" });
     }
 
     // Check if user already has a family
     const user = await User.findById(req.user);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     if (user.family) {
       return res.status(400).json({ message: "You already belong to a family" });
     }
@@ -56,7 +70,7 @@ exports.joinFamily = async (req, res) => {
     }
 
     // Check if already a member
-    if (family.members.includes(req.user)) {
+    if (family.members.some(m => m.toString() === req.user.toString())) {
       return res.status(400).json({ message: "You are already a member of this family" });
     }
 
@@ -76,6 +90,9 @@ exports.joinFamily = async (req, res) => {
 exports.getFamilyStats = async (req, res) => {
   try {
     const user = await User.findById(req.user);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     if (!user.family) {
       return res.json({

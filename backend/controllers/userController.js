@@ -45,20 +45,46 @@ exports.getProfile = async (req, res) => {
 // PUT /api/user/update
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email } = req.body || {};
     
-    if (email) {
-      const existingUser = await User.findOne({ email });
+    const updateFields = {};
+
+    if (name !== undefined) {
+      if (typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ message: "Name cannot be empty" });
+      }
+      if (name.trim().length > 100) {
+        return res.status(400).json({ message: "Name must not exceed 100 characters" });
+      }
+      updateFields.name = name.trim();
+    }
+
+    if (email !== undefined) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (typeof email !== "string" || !emailRegex.test(email.trim())) {
+        return res.status(400).json({ message: "A valid email address is required" });
+      }
+
+      const existingUser = await User.findOne({ email: email.trim() });
       if (existingUser && existingUser._id.toString() !== req.user.toString()) {
         return res.status(400).json({ message: "Email already in use" });
       }
+      updateFields.email = email.trim();
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ message: "No valid update fields provided" });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user,
-      { $set: { name, email } },
+      { $set: updateFields },
       { new: true }
     );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     res.json({ message: "Profile updated successfully", user: updatedUser });
   } catch (error) {

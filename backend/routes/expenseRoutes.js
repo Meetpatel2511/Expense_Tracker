@@ -18,6 +18,7 @@ const {
 
 const authMiddleware = require("../middleware/authMiddleware");
 const requirePro = require("../middleware/proMiddleware");
+const { validateObjectIdParam } = require("../middleware/validation");
 
 // Optimized Unified Dashboard
 router.get("/dashboard", authMiddleware, getDashboardData);
@@ -50,9 +51,9 @@ router.get("/suggestions", authMiddleware, requirePro, getAlertsOnly);
 router.get("/category-list", getCategories);
 
 // Delete expense
-router.delete("/:id", authMiddleware, deleteExpense);
+router.delete("/:id", authMiddleware, validateObjectIdParam("id"), deleteExpense);
 
 // Update expense
-router.put("/:id", authMiddleware, updateExpense);
+router.put("/:id", authMiddleware, validateObjectIdParam("id"), updateExpense);
 
 module.exports = router;
