@@ -28,4 +28,8 @@ const recurringExpenseSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Targeted Index:
+// Compound index for finding active recurring expenses due for execution per user
+recurringExpenseSchema.index({ user: 1, nextDate: 1 });
+
 module.exports = mongoose.model("RecurringExpense", recurringExpenseSchema);

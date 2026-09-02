@@ -24,4 +24,8 @@ const incomeSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Targeted Index:
+// User-scoped date filtering and sorting for income queries
+incomeSchema.index({ user: 1, date: -1 });
+
 module.exports = mongoose.model("Income", incomeSchema);

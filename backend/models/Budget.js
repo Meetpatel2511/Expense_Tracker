@@ -24,4 +24,8 @@ const budgetSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Targeted Index:
+// Compound index for monthly budget lookup and upsert by category
+budgetSchema.index({ user: 1, month: 1, year: 1, category: 1 });
+
 module.exports = mongoose.model("Budget", budgetSchema);

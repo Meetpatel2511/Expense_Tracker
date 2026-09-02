@@ -6,6 +6,10 @@ const expenseSchema = new mongoose.Schema({
     ref: "User",
     required: true
   },
+  family: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Family"
+  },
   amount: {
     type: Number,
     required: true
@@ -22,5 +26,12 @@ const expenseSchema = new mongoose.Schema({
     default: Date.now
   }
 }, { timestamps: true });
+
+// Targeted Indexes:
+// 1. Compound index for user-scoped date filtering and sorting (dashboard, summary, expense list)
+expenseSchema.index({ user: 1, date: -1 });
+
+// 2. Index for family expense aggregation queries
+expenseSchema.index({ family: 1 });
 
 module.exports = mongoose.model("Expense", expenseSchema);
