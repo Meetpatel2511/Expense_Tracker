@@ -3,21 +3,37 @@ node_modules/
 
 # Local Environment Variables (CRITICAL)
 .env
+.env.*
+!.env.example
 backend/.env
+backend/.env.*
+!backend/.env.example
 frontend/.env
+frontend/.env.*
+!frontend/.env.example
 *.env.local
 
 # Build files
-frontend/build/
+build/
 dist/
+frontend/build/
+frontend/dist/
 
-# Logs
+# Logs and Build Artifacts
+*.log
+*.log.txt
+build_*.txt
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 backend/error.log
 
-# IDE files
+# Test coverage
+coverage/
+.nyc_output/
+
+# IDE and OS files
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
