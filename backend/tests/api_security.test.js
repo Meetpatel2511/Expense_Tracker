@@ -42,4 +42,33 @@ test("API Security and Route Protection Suite", async (t) => {
     assert.ok(res.body.categories.includes("Food & Dining"));
     assert.ok(res.body.categories.includes("Bills & Utilities"));
   });
+
+  await t.test("CORS should allow configured localhost origins with credentials", async () => {
+    const res = await request(app)
+      .get("/")
+      .set("Origin", "http://localhost:5173");
+    
+    assert.equal(res.status, 200);
+    assert.equal(res.headers["access-control-allow-origin"], "http://localhost:5173");
+    assert.equal(res.headers["access-control-allow-credentials"], "true");
+  });
+
+  await t.test("CORS should succeed on OPTIONS preflight request for allowed origin", async () => {
+    const res = await request(app)
+      .options("/api/user/profile")
+      .set("Origin", "http://localhost:5173")
+      .set("Access-Control-Request-Method", "GET");
+    
+    assert.equal(res.status, 200);
+    assert.equal(res.headers["access-control-allow-origin"], "http://localhost:5173");
+  });
+
+  await t.test("CORS should not attach allow-origin header for unknown/disallowed origin", async () => {
+    const res = await request(app)
+      .get("/")
+      .set("Origin", "https://unauthorized-evil-site.com");
+    
+    assert.equal(res.status, 200);
+    assert.equal(res.headers["access-control-allow-origin"], undefined);
+  });
 });

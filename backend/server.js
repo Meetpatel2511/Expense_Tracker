@@ -16,25 +16,40 @@ const familyRoutes = require("./routes/familyRoutes");
 const userRoutes = require("./routes/userRoutes");
 
 // CORS Configuration
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  process.env.FRONTEND_URL?.replace(/\/$/, ""),
-  "http://localhost:3000",
-  "http://localhost:5173"
-].filter(Boolean);
+const configuredOrigins = (process.env.FRONTEND_URL || "")
+  .split(",")
+  .map(origin => origin.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
 
-app.use(cors({
+const defaultOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:3000"
+];
+
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...configuredOrigins]));
+
+const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow non-browser requests with no origin (like mobile apps, server-to-server, or curl)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+
+    const normalizedOrigin = origin.trim().replace(/\/+$/, "");
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      return callback(null, true);
     }
+
+    // Disallow unapproved origins without throwing an unhandled exception
+    return callback(null, false);
   },
-  credentials: true
-}));
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
