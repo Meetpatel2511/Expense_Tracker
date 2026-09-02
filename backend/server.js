@@ -4,6 +4,8 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
+const { notFoundHandler, globalErrorHandler } = require("./middleware/errorHandler");
+
 const app = express();
 
 // Import routes
@@ -13,7 +15,7 @@ const budgetRoutes = require("./routes/budgetRoutes");
 const familyRoutes = require("./routes/familyRoutes");
 const userRoutes = require("./routes/userRoutes");
 
-// Middleware
+// CORS Configuration
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.FRONTEND_URL?.replace(/\/$/, ""),
@@ -33,12 +35,13 @@ app.use(cors({
   },
   credentials: true
 }));
+
 app.use(express.json());
 
 // Global Rate Limiter
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Limit each IP to 100 requests per window
+  max: 1000,
   message: { message: "Too many requests from this IP, please try again after 15 minutes" },
   standardHeaders: true,
   legacyHeaders: false,
@@ -69,19 +72,24 @@ app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
+// 404 Handler for undefined routes
+app.use(notFoundHandler);
+
 // Global Error Handler
-app.use((err, req, res, next) => {
-  console.error("Unhandled Error:", err.message);
-  res.status(err.status || 500).json({ 
-    message: err.message || "Internal Server Error" 
-  });
-});
+app.use(globalErrorHandler);
 
-// Connect DB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log("MongoDB Error:", err.message));
+// Connect DB & Start server if running directly
+if (process.env.NODE_ENV !== "test") {
+  if (process.env.MONGO_URI) {
+    mongoose.connect(process.env.MONGO_URI)
+      .then(() => console.log("MongoDB Connected"))
+      .catch(err => console.error("MongoDB Connection Error:", err.message));
+  } else {
+    console.warn("MONGO_URI is not defined. Database operations may fail.");
+  }
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+module.exports = app;
