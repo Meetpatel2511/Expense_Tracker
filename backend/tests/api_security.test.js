@@ -71,4 +71,15 @@ test("API Security and Route Protection Suite", async (t) => {
     assert.equal(res.status, 200);
     assert.equal(res.headers["access-control-allow-origin"], undefined);
   });
+
+  await t.test("Express trust proxy should be enabled for reverse proxies and process X-Forwarded-For without error", async () => {
+    assert.equal(app.get("trust proxy"), 1);
+
+    const res = await request(app)
+      .get("/")
+      .set("X-Forwarded-For", "203.0.113.195");
+    
+    assert.equal(res.status, 200);
+    assert.match(res.text, /API is running/);
+  });
 });

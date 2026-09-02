@@ -8,6 +8,10 @@ const { notFoundHandler, globalErrorHandler } = require("./middleware/errorHandl
 
 const app = express();
 
+// Trust the first reverse proxy hop (Render, Vercel, Heroku load balancers)
+// Allows express-rate-limit to extract the real client IP from X-Forwarded-For securely
+app.set("trust proxy", 1);
+
 // Import routes
 const expenseRoutes = require("./routes/expenseRoutes");
 const incomeRoutes = require("./routes/incomeRoutes");
