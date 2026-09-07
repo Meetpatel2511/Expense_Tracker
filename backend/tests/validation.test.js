@@ -78,4 +78,38 @@ test("Input Validation Helper Suite", async (t) => {
     const invalidYear = parseMonthYear("5", "1800");
     assert.equal(invalidYear.isValid, false);
   });
+
+  await t.test("VALID_CATEGORIES and VALID_BUDGET_CATEGORIES should be defined and contain valid categories", () => {
+    const { VALID_CATEGORIES, VALID_BUDGET_CATEGORIES } = require("../middleware/validation");
+    assert.ok(Array.isArray(VALID_CATEGORIES));
+    assert.ok(VALID_CATEGORIES.includes("Food & Dining"));
+    assert.ok(VALID_CATEGORIES.includes("Shopping"));
+    assert.ok(VALID_CATEGORIES.includes("Bills & Utilities"));
+    assert.ok(VALID_CATEGORIES.includes("Groceries"));
+
+    assert.ok(Array.isArray(VALID_BUDGET_CATEGORIES));
+    assert.ok(VALID_BUDGET_CATEGORIES.includes("Global"));
+    assert.ok(VALID_BUDGET_CATEGORIES.includes("Food & Dining"));
+    assert.equal(VALID_BUDGET_CATEGORIES.includes("UnknownFakeCategory"), false);
+  });
+
+  await t.test("isValidAmountRange should validate minAmount <= maxAmount", () => {
+    const { isValidAmountRange } = require("../middleware/validation");
+    assert.equal(isValidAmountRange(10, 100), true);
+    assert.equal(isValidAmountRange("50", "50"), true);
+    assert.equal(isValidAmountRange(100, 50), false);
+    assert.equal(isValidAmountRange("200", "50"), false);
+    assert.equal(isValidAmountRange(undefined, 100), true);
+    assert.equal(isValidAmountRange(50, undefined), true);
+  });
+
+  await t.test("isValidDateRange should validate startDate <= endDate", () => {
+    const { isValidDateRange } = require("../middleware/validation");
+    assert.equal(isValidDateRange("2026-01-01", "2026-01-31"), true);
+    assert.equal(isValidDateRange("2026-05-01", "2026-05-01"), true);
+    assert.equal(isValidDateRange("2026-12-31", "2026-01-01"), false);
+    assert.equal(isValidDateRange(undefined, "2026-01-31"), true);
+    assert.equal(isValidDateRange("2026-01-01", undefined), true);
+  });
 });
+

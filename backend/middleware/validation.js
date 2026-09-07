@@ -85,11 +85,62 @@ const parseMonthYear = (monthVal, yearVal) => {
   return { month, year, isValid: true };
 };
 
+// Centralized list of valid expense categories
+const VALID_CATEGORIES = Object.freeze([
+  "Food & Dining",
+  "Shopping",
+  "Transportation",
+  "Entertainment",
+  "Bills & Utilities",
+  "Healthcare",
+  "Education",
+  "Travel",
+  "Groceries",
+  "Rent",
+  "Other"
+]);
+
+// Valid budget categories include all standard categories plus 'Global'
+const VALID_BUDGET_CATEGORIES = Object.freeze([...VALID_CATEGORIES, "Global"]);
+
+/**
+ * Validates that minAmount is less than or equal to maxAmount when both are provided.
+ * @param {any} minAmount
+ * @param {any} maxAmount
+ * @returns {boolean}
+ */
+const isValidAmountRange = (minAmount, maxAmount) => {
+  if (minAmount === undefined || minAmount === "" || maxAmount === undefined || maxAmount === "") {
+    return true;
+  }
+  const min = Number(minAmount);
+  const max = Number(maxAmount);
+  if (isNaN(min) || isNaN(max)) return false;
+  return min <= max;
+};
+
+/**
+ * Validates that startDate is before or equal to endDate when both are provided.
+ * @param {any} startDate
+ * @param {any} endDate
+ * @returns {boolean}
+ */
+const isValidDateRange = (startDate, endDate) => {
+  if (!startDate || !endDate) return true;
+  if (!isValidDate(startDate) || !isValidDate(endDate)) return false;
+  return new Date(startDate).getTime() <= new Date(endDate).getTime();
+};
+
 module.exports = {
+  VALID_CATEGORIES,
+  VALID_BUDGET_CATEGORIES,
   isValidObjectId,
   validateObjectIdParam,
   isValidAmount,
   isValidDate,
+  isValidAmountRange,
+  isValidDateRange,
   parsePagination,
   parseMonthYear
 };
+

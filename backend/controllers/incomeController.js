@@ -4,13 +4,15 @@ const {
   isValidObjectId,
   isValidAmount,
   isValidDate,
+  isValidAmountRange,
+  isValidDateRange,
   parsePagination
 } = require("../middleware/validation");
 
 // ADD INCOME
 exports.addIncome = async (req, res) => {
   try {
-    const { amount, source, date } = req.body;
+    const { amount, source, date } = req.body || {};
 
     if (!isValidAmount(amount)) {
       return res.status(400).json({ message: "Amount must be a positive number (up to 1,000,000,000)" });
@@ -63,13 +65,17 @@ exports.getIncomes = async (req, res) => {
 
     // 📅 Date Range Filter
     if (startDate || endDate) {
+      if (startDate && !isValidDate(startDate)) return res.status(400).json({ message: "Invalid startDate format" });
+      if (endDate && !isValidDate(endDate)) return res.status(400).json({ message: "Invalid endDate format" });
+      if (startDate && endDate && !isValidDateRange(startDate, endDate)) {
+        return res.status(400).json({ message: "startDate cannot be after endDate" });
+      }
+
       query.date = {};
       if (startDate) {
-        if (!isValidDate(startDate)) return res.status(400).json({ message: "Invalid startDate format" });
         query.date.$gte = new Date(startDate);
       }
       if (endDate) {
-        if (!isValidDate(endDate)) return res.status(400).json({ message: "Invalid endDate format" });
         query.date.$lte = new Date(endDate);
       }
     } else {
@@ -82,17 +88,27 @@ exports.getIncomes = async (req, res) => {
 
     // 💰 Amount Filter
     if (minAmount !== undefined || maxAmount !== undefined) {
-      query.amount = {};
       if (minAmount !== undefined && minAmount !== "") {
         if (isNaN(Number(minAmount)) || Number(minAmount) < 0) {
           return res.status(400).json({ message: "Invalid minAmount" });
         }
-        query.amount.$gte = Number(minAmount);
       }
       if (maxAmount !== undefined && maxAmount !== "") {
         if (isNaN(Number(maxAmount)) || Number(maxAmount) < 0) {
           return res.status(400).json({ message: "Invalid maxAmount" });
         }
+      }
+      if (minAmount !== undefined && minAmount !== "" && maxAmount !== undefined && maxAmount !== "") {
+        if (!isValidAmountRange(minAmount, maxAmount)) {
+          return res.status(400).json({ message: "minAmount cannot be greater than maxAmount" });
+        }
+      }
+
+      query.amount = {};
+      if (minAmount !== undefined && minAmount !== "") {
+        query.amount.$gte = Number(minAmount);
+      }
+      if (maxAmount !== undefined && maxAmount !== "") {
         query.amount.$lte = Number(maxAmount);
       }
     }
@@ -152,7 +168,11 @@ exports.updateIncome = async (req, res) => {
       return res.status(404).json({ message: "Income not found or not authorized" });
     }
 
-    const { amount, source, date } = req.body;
+    const { amount, source, date } = req.body || {};
+
+    if (amount === undefined && source === undefined && date === undefined) {
+      return res.status(400).json({ message: "No valid update fields provided" });
+    }
 
     if (amount !== undefined && !isValidAmount(amount)) {
       return res.status(400).json({ message: "Amount must be a positive number" });

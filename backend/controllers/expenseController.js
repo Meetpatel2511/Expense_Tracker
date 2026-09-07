@@ -5,20 +5,17 @@ const Budget = require("../models/Budget");
 const RecurringExpense = require("../models/RecurringExpense");
 const { sanitize } = require("../utils/sanitize");
 const {
+  VALID_CATEGORIES,
   isValidObjectId,
   isValidAmount,
   isValidDate,
+  isValidAmountRange,
+  isValidDateRange,
   parsePagination,
   parseMonthYear
 } = require("../middleware/validation");
 const mongoose = require("mongoose");
 
-// VALID CATEGORIES
-const VALID_CATEGORIES = [
-  "Food & Dining", "Shopping", "Transportation", "Entertainment",
-  "Bills & Utilities", "Healthcare", "Education", "Travel",
-  "Groceries", "Rent", "Other"
-];
 
 // ADD EXPENSE
 exports.addExpense = async (req, res) => {
@@ -96,13 +93,17 @@ exports.getExpenses = async (req, res) => {
 
     // 📅 Date Range Filter
     if (startDate || endDate) {
+      if (startDate && !isValidDate(startDate)) return res.status(400).json({ message: "Invalid startDate format" });
+      if (endDate && !isValidDate(endDate)) return res.status(400).json({ message: "Invalid endDate format" });
+      if (startDate && endDate && !isValidDateRange(startDate, endDate)) {
+        return res.status(400).json({ message: "startDate cannot be after endDate" });
+      }
+
       query.date = {};
       if (startDate) {
-        if (!isValidDate(startDate)) return res.status(400).json({ message: "Invalid startDate format" });
         query.date.$gte = new Date(startDate);
       }
       if (endDate) {
-        if (!isValidDate(endDate)) return res.status(400).json({ message: "Invalid endDate format" });
         query.date.$lte = new Date(endDate);
       }
     } else {
@@ -115,17 +116,27 @@ exports.getExpenses = async (req, res) => {
 
     // 💰 Amount Filter
     if (minAmount !== undefined || maxAmount !== undefined) {
-      query.amount = {};
       if (minAmount !== undefined && minAmount !== "") {
         if (isNaN(Number(minAmount)) || Number(minAmount) < 0) {
           return res.status(400).json({ message: "Invalid minAmount" });
         }
-        query.amount.$gte = Number(minAmount);
       }
       if (maxAmount !== undefined && maxAmount !== "") {
         if (isNaN(Number(maxAmount)) || Number(maxAmount) < 0) {
           return res.status(400).json({ message: "Invalid maxAmount" });
         }
+      }
+      if (minAmount !== undefined && minAmount !== "" && maxAmount !== undefined && maxAmount !== "") {
+        if (!isValidAmountRange(minAmount, maxAmount)) {
+          return res.status(400).json({ message: "minAmount cannot be greater than maxAmount" });
+        }
+      }
+
+      query.amount = {};
+      if (minAmount !== undefined && minAmount !== "") {
+        query.amount.$gte = Number(minAmount);
+      }
+      if (maxAmount !== undefined && maxAmount !== "") {
         query.amount.$lte = Number(maxAmount);
       }
     }
@@ -196,15 +207,18 @@ const processRecurringExpenses = async (userId) => {
 // GET SUMMARY (MongoDB query filtering)
 exports.getSummary = async (req, res) => {
   try {
+    const { month, year, isValid } = parseMonthYear(req.query.month, req.query.year);
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid month or year parameter" });
+    }
+
     // Process any pending recurring expenses first to ensure fresh data
     await processRecurringExpenses(req.user);
-
-    const month = req.query.month ? parseInt(req.query.month) : new Date().getUTCMonth() + 1;
-    const year = req.query.year ? parseInt(req.query.year) : new Date().getUTCFullYear();
 
     // Selected Month Range
     const start = new Date(Date.UTC(year, month - 1, 1));
     const end = new Date(Date.UTC(year, month, 1));
+
 
     // Previous Month Range
     const lastMonth = month === 1 ? 12 : month - 1;
@@ -274,11 +288,14 @@ exports.getSummary = async (req, res) => {
 // GET CATEGORY STATS (MongoDB query filtering)
 exports.getCategoryStats = async (req, res) => {
   try {
-    const month = req.query.month ? parseInt(req.query.month) : new Date().getUTCMonth() + 1;
-    const year = req.query.year ? parseInt(req.query.year) : new Date().getUTCFullYear();
+    const { month, year, isValid } = parseMonthYear(req.query.month, req.query.year);
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid month or year parameter" });
+    }
 
     const start = new Date(Date.UTC(year, month - 1, 1));
     const end = new Date(Date.UTC(year, month, 1));
+
 
     const expenses = await Expense.find({ 
       user: req.user, 
@@ -369,7 +386,10 @@ exports.getInsights = async (req, res) => {
 // GET YEARLY REPORT (fixed data shape for Recharts)
 exports.getYearlyReport = async (req, res) => {
   try {
-    const year = req.query.year ? parseInt(req.query.year) : new Date().getUTCFullYear();
+    const { year, isValid } = parseMonthYear(undefined, req.query.year);
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid year parameter" });
+    }
 
     const start = new Date(Date.UTC(year, 0, 1));
     const end = new Date(Date.UTC(year + 1, 0, 1));
@@ -494,8 +514,10 @@ const generateSmartAlerts = ({ expenses, budgets, transactions, user }) => {
 exports.getDashboardData = async (req, res) => {
   try {
     const userId = req.user;
-    const month = req.query.month ? parseInt(req.query.month) : new Date().getUTCMonth() + 1;
-    const year = req.query.year ? parseInt(req.query.year) : new Date().getUTCFullYear();
+    const { month, year, isValid } = parseMonthYear(req.query.month, req.query.year);
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid month or year parameter" });
+    }
 
     // Time Ranges (UTC for consistency)
     const start = new Date(Date.UTC(year, month - 1, 1));
@@ -613,8 +635,10 @@ exports.getDashboardData = async (req, res) => {
 exports.getAlertsOnly = async (req, res) => {
   try {
     const userId = req.user;
-    const month = req.query.month ? parseInt(req.query.month) : new Date().getUTCMonth() + 1;
-    const year = req.query.year ? parseInt(req.query.year) : new Date().getUTCFullYear();
+    const { month, year, isValid } = parseMonthYear(req.query.month, req.query.year);
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid month or year parameter" });
+    }
 
     const start = new Date(Date.UTC(year, month - 1, 1));
     const end = new Date(Date.UTC(year, month, 1));
@@ -723,7 +747,11 @@ exports.updateExpense = async (req, res) => {
       return res.status(404).json({ message: "Expense not found or not authorized" });
     }
 
-    const { amount, category, note, date } = req.body;
+    const { amount, category, note, date } = req.body || {};
+
+    if (amount === undefined && category === undefined && note === undefined && date === undefined) {
+      return res.status(400).json({ message: "No valid update fields provided" });
+    }
 
     if (amount !== undefined && !isValidAmount(amount)) {
       return res.status(400).json({ message: "Amount must be a positive number" });

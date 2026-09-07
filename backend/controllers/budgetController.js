@@ -1,19 +1,34 @@
 const Budget = require("../models/Budget");
 const Expense = require("../models/Expense");
 const { sanitize } = require("../utils/sanitize");
-const { isValidAmount, parseMonthYear } = require("../middleware/validation");
+const {
+  VALID_BUDGET_CATEGORIES,
+  isValidAmount,
+  parseMonthYear
+} = require("../middleware/validation");
 
 // SET BUDGET (Global or Category-specific)
 exports.setBudget = async (req, res) => {
   try {
-    const { amount, category } = req.body;
-    const cat = sanitize(category || "Global", 50);
+    const { amount, category } = req.body || {};
+    const rawCategory = (category || "Global").toString().trim();
+
+    if (!VALID_BUDGET_CATEGORIES.includes(rawCategory)) {
+      return res.status(400).json({
+        message: `Invalid budget category. Allowed categories: ${VALID_BUDGET_CATEGORIES.join(", ")}`
+      });
+    }
+
+    const cat = sanitize(rawCategory, 50);
 
     if (!isValidAmount(amount)) {
       return res.status(400).json({ message: "Budget amount must be a positive number (up to 1,000,000,000)" });
     }
 
-    const { month: qMonth, year } = parseMonthYear(req.query.month, req.query.year);
+    const { month: qMonth, year, isValid } = parseMonthYear(req.query.month, req.query.year);
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid month or year parameter" });
+    }
     const month = qMonth - 1; // 0-indexed month for internal storage
 
     // Upsert budget for user, month, year, category
@@ -43,7 +58,10 @@ exports.setBudget = async (req, res) => {
 // GET ALL BUDGETS FOR A MONTH
 exports.getBudgets = async (req, res) => {
   try {
-    const { month: qMonth, year } = parseMonthYear(req.query.month, req.query.year);
+    const { month: qMonth, year, isValid } = parseMonthYear(req.query.month, req.query.year);
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid month or year parameter" });
+    }
     const month = qMonth - 1;
 
     const budgets = await Budget.find({ user: req.user, month, year });
@@ -56,7 +74,10 @@ exports.getBudgets = async (req, res) => {
 // GET BUDGET STATUS (Summarized for all set budgets)
 exports.getBudgetStatus = async (req, res) => {
   try {
-    const { month: qMonth, year } = parseMonthYear(req.query.month, req.query.year);
+    const { month: qMonth, year, isValid } = parseMonthYear(req.query.month, req.query.year);
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid month or year parameter" });
+    }
     const month = qMonth - 1;
 
     const budgets = await Budget.find({ user: req.user, month, year });
