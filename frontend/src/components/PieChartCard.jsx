@@ -45,7 +45,7 @@ function PieChartCard({ categoryData = {}, total = 0, title = "Expense Breakdown
 
       <div className="pie-chart-layout">
         <div className="pie-chart-container">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <ResponsiveContainer width="100%" height={180} minWidth={0}>
             <PieChart>
               <Pie
                 data={data}
