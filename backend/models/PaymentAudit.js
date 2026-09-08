@@ -120,4 +120,16 @@ paymentAuditSchema.index({ paymentRequestId: 1, createdAt: -1 });
 paymentAuditSchema.index({ userId: 1, createdAt: -1 });
 paymentAuditSchema.index({ performedBy: 1, createdAt: -1 });
 
+// Partial unique index enforcing at most one approval / activation event per PaymentRequest
+paymentAuditSchema.index(
+  { paymentRequestId: 1, action: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      action: { $in: ["STATUS_CHANGED_APPROVED", "PRO_ENTITLEMENT_ACTIVATED"] }
+    }
+  }
+);
+
 module.exports = mongoose.model("PaymentAudit", paymentAuditSchema);
+

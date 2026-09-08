@@ -38,7 +38,13 @@ const userSchema = new mongoose.Schema({
   },
   paymentId: {
     type: String
+  },
+  role: {
+    type: String,
+    enum: ["USER", "ADMIN"],
+    default: "USER"
   }
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);
+
