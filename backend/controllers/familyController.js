@@ -74,6 +74,17 @@ exports.joinFamily = async (req, res) => {
       return res.status(400).json({ message: "You are already a member of this family" });
     }
 
+    // Enforce 2-member limit for Free accounts
+    if (family.members.length >= 2) {
+      const hasProMember = Boolean(user.isPro) || Boolean(await User.exists({ _id: { $in: family.members }, isPro: true }));
+      if (!hasProMember) {
+        return res.status(403).json({
+          message: "Free accounts can have up to 2 family members. Upgrade to Pro for unlimited members.",
+          code: "FAMILY_LIMIT_REACHED"
+        });
+      }
+    }
+
     family.members.push(req.user);
     await family.save();
 

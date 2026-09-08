@@ -695,6 +695,22 @@ exports.addRecurringExpense = async (req, res) => {
       return res.status(400).json({ message: "Invalid startDate format" });
     }
 
+    // Check Pro limits for Free accounts (Max 2 recurring bills)
+    const user = await User.findById(req.user).select("isPro");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.isPro) {
+      const recurringCount = await RecurringExpense.countDocuments({ user: req.user });
+      if (recurringCount >= 2) {
+        return res.status(403).json({
+          message: "Free accounts can have up to 2 recurring bills. Upgrade to Pro for unlimited recurring expenses.",
+          code: "RECURRING_LIMIT_REACHED"
+        });
+      }
+    }
+
     const start = startDate ? new Date(startDate) : new Date();
     const nextDate = start < new Date() ? new Date() : start;
 
