@@ -1,9 +1,30 @@
 const crypto = require("crypto");
 
 /**
- * Default test secret for development/demo test environment if RAZORPAY_KEY_SECRET is not in env.
+ * Deterministic test secret used ONLY in automated test suite (NODE_ENV === "test").
+ * Never used as a fallback in development or production.
  */
 const DEFAULT_TEST_SECRET = "rzp_test_secret_portfolio_demo";
+
+/**
+ * Resolves the effective HMAC key secret safely.
+ * Fails closed in production if RAZORPAY_KEY_SECRET is not configured.
+ *
+ * @param {string} [secret] - Explicitly provided secret
+ * @returns {string|null} Effective secret or null if missing/unauthorized
+ */
+function getEffectiveSecret(secret) {
+  if (secret) return secret;
+  if (process.env.RAZORPAY_KEY_SECRET) return process.env.RAZORPAY_KEY_SECRET;
+
+  // Strictly allow test fallback only when running the test runner
+  if (process.env.NODE_ENV === "test") {
+    return DEFAULT_TEST_SECRET;
+  }
+
+  // In production or development without secret configured, fail closed
+  return null;
+}
 
 /**
  * Cryptographically verifies Razorpay payment signature using HMAC SHA-256.
@@ -12,7 +33,7 @@ const DEFAULT_TEST_SECRET = "rzp_test_secret_portfolio_demo";
  * @param {string} params.orderId - Razorpay Order ID (e.g. order_xxx)
  * @param {string} params.paymentId - Razorpay Payment ID (e.g. pay_xxx)
  * @param {string} params.signature - Razorpay HMAC SHA-256 signature
- * @param {string} [params.secret] - Optional secret, defaults to env or test secret
+ * @param {string} [params.secret] - Optional secret override
  * @returns {boolean} True if signature matches cryptographically
  */
 function verifyRazorpaySignature({ orderId, paymentId, signature, secret }) {
@@ -20,7 +41,11 @@ function verifyRazorpaySignature({ orderId, paymentId, signature, secret }) {
     return false;
   }
 
-  const keySecret = secret || process.env.RAZORPAY_KEY_SECRET || DEFAULT_TEST_SECRET;
+  const keySecret = getEffectiveSecret(secret);
+  if (!keySecret) {
+    // Fail closed if RAZORPAY_KEY_SECRET is not configured
+    return false;
+  }
 
   try {
     const generatedSignature = crypto
@@ -37,14 +62,13 @@ function verifyRazorpaySignature({ orderId, paymentId, signature, secret }) {
 
     return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
   } catch (err) {
-    console.error("Signature verification error:", err);
     return false;
   }
 }
 
 /**
  * Helper to generate a valid test signature for development/test environment.
- * Useful for automated tests and frontend test simulator.
+ * Useful for automated tests and test simulation.
  *
  * @param {string} orderId
  * @param {string} paymentId
@@ -52,7 +76,7 @@ function verifyRazorpaySignature({ orderId, paymentId, signature, secret }) {
  * @returns {string} HMAC SHA-256 hex digest
  */
 function generateTestSignature(orderId, paymentId, secret) {
-  const keySecret = secret || process.env.RAZORPAY_KEY_SECRET || DEFAULT_TEST_SECRET;
+  const keySecret = getEffectiveSecret(secret) || DEFAULT_TEST_SECRET;
   return crypto
     .createHmac("sha256", keySecret)
     .update(`${orderId}|${paymentId}`)

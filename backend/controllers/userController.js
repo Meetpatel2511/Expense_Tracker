@@ -1,8 +1,10 @@
 const User = require("../models/User");
 const Expense = require("../models/Expense");
 const Income = require("../models/Income");
+const Order = require("../models/Order");
 const { verifyRazorpaySignature } = require("../utils/paymentVerification");
 const { isProActive, calculateProExpiration } = require("../middleware/proMiddleware");
+const { isValidPlan, getPlanPricing } = require("../config/pricing");
 
 // GET /api/user/profile
 exports.getProfile = async (req, res) => {
@@ -96,18 +98,37 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// POST /api/user/create-order (Razorpay test order generation)
+// POST /api/user/create-order (Razorpay test order generation with authoritative plan binding)
 exports.createOrder = async (req, res) => {
   try {
-    const amount = 19900; // ₹199 in paise
-    const currency = "INR";
-    const receipt = `rcpt_${Date.now()}`;
+    const requestedPlan = req.body?.plan ? String(req.body.plan).toUpperCase().trim() : "MONTHLY";
+
+    if (!isValidPlan(requestedPlan)) {
+      return res.status(400).json({
+        message: "Invalid subscription plan. Allowed plans: MONTHLY, YEARLY.",
+        code: "INVALID_PLAN"
+      });
+    }
+
+    const pricing = getPlanPricing(requestedPlan);
     const orderId = `order_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const receipt = `rcpt_${Date.now()}`;
+
+    // Persist order in DB with server-authoritative plan and amount
+    const order = await Order.create({
+      orderId,
+      userId: req.user,
+      plan: requestedPlan,
+      amount: pricing.amount,
+      currency: pricing.currency,
+      status: "created"
+    });
 
     res.json({
-      orderId,
-      amount,
-      currency,
+      orderId: order.orderId,
+      amount: order.amount,
+      currency: order.currency,
+      plan: order.plan,
       receipt,
       keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_demo_key"
     });
@@ -129,38 +150,102 @@ exports.upgradeToPro = async (req, res) => {
     } = req.body || {};
 
     if (!paymentId || typeof paymentId !== "string" || !paymentId.trim()) {
-      return res.status(400).json({ message: "Payment verification failed: razorpay_payment_id is required." });
-    }
-
-    if (!orderId || typeof orderId !== "string" || !orderId.trim()) {
-      return res.status(400).json({ message: "Payment verification failed: razorpay_order_id is required." });
-    }
-
-    if (!signature || typeof signature !== "string" || !signature.trim()) {
-      return res.status(400).json({ message: "Payment verification failed: razorpay_signature is required." });
-    }
-
-    // Cryptographically verify the HMAC SHA-256 signature
-    const isValidSignature = verifyRazorpaySignature({
-      orderId: orderId.trim(),
-      paymentId: paymentId.trim(),
-      signature: signature.trim()
-    });
-
-    if (!isValidSignature) {
-      return res.status(400).json({ 
-        message: "Payment verification failed: invalid signature. Pro upgrade rejected." 
+      return res.status(400).json({
+        message: "Payment verification failed: razorpay_payment_id is required.",
+        code: "PAYMENT_VERIFICATION_FAILED"
       });
     }
 
+    if (!orderId || typeof orderId !== "string" || !orderId.trim()) {
+      return res.status(400).json({
+        message: "Payment verification failed: razorpay_order_id is required.",
+        code: "PAYMENT_VERIFICATION_FAILED"
+      });
+    }
+
+    if (!signature || typeof signature !== "string" || !signature.trim()) {
+      return res.status(400).json({
+        message: "Payment verification failed: razorpay_signature is required.",
+        code: "PAYMENT_VERIFICATION_FAILED"
+      });
+    }
+
+    const cleanOrderId = orderId.trim();
+    const cleanPaymentId = paymentId.trim();
+    const cleanSignature = signature.trim();
+
+    // 1. Cryptographically verify the HMAC SHA-256 signature
+    const isValidSignature = verifyRazorpaySignature({
+      orderId: cleanOrderId,
+      paymentId: cleanPaymentId,
+      signature: cleanSignature
+    });
+
+    if (!isValidSignature) {
+      return res.status(400).json({
+        message: "Payment verification failed: invalid signature. Pro upgrade rejected.",
+        code: "PAYMENT_VERIFICATION_FAILED"
+      });
+    }
+
+    // 2. Find server-side order
+    const order = await Order.findOne({ orderId: cleanOrderId });
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found.",
+        code: "ORDER_NOT_FOUND"
+      });
+    }
+
+    // 3. Verify order ownership
+    if (order.userId.toString() !== req.user.toString()) {
+      return res.status(403).json({
+        message: "Order ownership mismatch. You cannot claim an order created by another account.",
+        code: "ORDER_OWNERSHIP_MISMATCH"
+      });
+    }
+
+    // 4. Verify paymentId has not been used across other orders
+    const existingPayment = await Order.findOne({ paymentId: cleanPaymentId });
+    if (existingPayment && existingPayment.orderId !== cleanOrderId) {
+      return res.status(400).json({
+        message: "Payment identifier has already been used.",
+        code: "PAYMENT_ALREADY_USED"
+      });
+    }
+
+    // 5. Atomically redeem the order to prevent replay / race conditions
+    const now = new Date();
+    const redeemedOrder = await Order.findOneAndUpdate(
+      {
+        orderId: cleanOrderId,
+        userId: req.user,
+        status: "created"
+      },
+      {
+        $set: {
+          status: "paid",
+          paymentId: cleanPaymentId,
+          paidAt: now
+        }
+      },
+      { new: true }
+    );
+
+    if (!redeemedOrder) {
+      return res.status(400).json({
+        message: "Order has already been processed or is invalid.",
+        code: "ORDER_ALREADY_PROCESSED"
+      });
+    }
+
+    // 6. Find user and activate Pro using server-authoritative order.plan
     const user = await User.findById(req.user);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const now = new Date();
-    const plan = "MONTHLY"; // Server-bound plan matching the standard order
-    // Determine start of the current subscription period (proStartsAt) and new expiry
+    const plan = redeemedOrder.plan; // Authoritative plan from Order
     let proStartsAt;
     let newProExpiresAt;
     if (user.proExpiresAt && new Date(user.proExpiresAt) > now) {
@@ -178,16 +263,16 @@ exports.upgradeToPro = async (req, res) => {
     user.proStartsAt = proStartsAt;
     user.proExpiresAt = newProExpiresAt;
     user.proSince = user.proSince || now;
-    user.paymentId = paymentId.trim();
+    user.paymentId = cleanPaymentId;
     await user.save();
 
-    res.json({ 
-      message: "Upgraded to Pro successfully!", 
-      isPro: true, 
+    res.json({
+      message: "Upgraded to Pro successfully!",
+      isPro: true,
       plan: user.plan,
       proStartsAt: user.proStartsAt,
       proExpiresAt: user.proExpiresAt,
-      proSince: user.proSince 
+      proSince: user.proSince
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
