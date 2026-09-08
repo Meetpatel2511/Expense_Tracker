@@ -23,7 +23,17 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  plan: {
+    type: String,
+    enum: ["MONTHLY", "YEARLY"]
+  },
   proSince: {
+    type: Date
+  },
+  proStartsAt: {
+    type: Date
+  },
+  proExpiresAt: {
     type: Date
   },
   paymentId: {

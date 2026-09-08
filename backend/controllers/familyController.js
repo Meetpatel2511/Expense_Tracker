@@ -3,6 +3,7 @@ const User = require("../models/User");
 const Expense = require("../models/Expense");
 const { sanitize } = require("../utils/sanitize");
 const { isValidObjectId } = require("../middleware/validation");
+const { isProActive } = require("../middleware/proMiddleware");
 
 // CREATE FAMILY
 exports.createFamily = async (req, res) => {
@@ -76,7 +77,8 @@ exports.joinFamily = async (req, res) => {
 
     // Enforce 2-member limit for Free accounts
     if (family.members.length >= 2) {
-      const hasProMember = Boolean(user.isPro) || Boolean(await User.exists({ _id: { $in: family.members }, isPro: true }));
+      const memberUsers = await User.find({ _id: { $in: family.members }, isPro: true }).select("isPro proExpiresAt");
+      const hasProMember = isProActive(user) || memberUsers.some(m => isProActive(m));
       if (!hasProMember) {
         return res.status(403).json({
           message: "Free accounts can have up to 2 family members. Upgrade to Pro for unlimited members.",

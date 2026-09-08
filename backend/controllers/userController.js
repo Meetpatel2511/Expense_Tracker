@@ -2,6 +2,7 @@ const User = require("../models/User");
 const Expense = require("../models/Expense");
 const Income = require("../models/Income");
 const { verifyRazorpaySignature } = require("../utils/paymentVerification");
+const { isProActive, calculateProExpiration } = require("../middleware/proMiddleware");
 
 // GET /api/user/profile
 exports.getProfile = async (req, res) => {
@@ -28,8 +29,11 @@ exports.getProfile = async (req, res) => {
       name: user.name,
       email: user.email,
       clerkId: user.clerkId,
-      isPro: user.isPro || false,
+      isPro: isProActive(user),
+      plan: user.plan || null,
       proSince: user.proSince || null,
+      proStartsAt: user.proStartsAt || null,
+      proExpiresAt: user.proExpiresAt || null,
       createdAt: user.createdAt,
       stats: {
         totalExpense: totalExpense[0]?.total || 0,
@@ -154,18 +158,35 @@ exports.upgradeToPro = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (user.isPro) {
-      return res.json({ message: "Already a Pro member", isPro: true, proSince: user.proSince });
+    const now = new Date();
+    const plan = "MONTHLY"; // Server-bound plan matching the standard order
+    // Determine start of the current subscription period (proStartsAt) and new expiry
+    let proStartsAt;
+    let newProExpiresAt;
+    if (user.proExpiresAt && new Date(user.proExpiresAt) > now) {
+      // Active renewal: start from existing expiry
+      proStartsAt = new Date(user.proExpiresAt);
+      newProExpiresAt = calculateProExpiration(plan, user.proExpiresAt, proStartsAt);
+    } else {
+      // New activation or expired subscription: start from now
+      proStartsAt = now;
+      newProExpiresAt = calculateProExpiration(plan, null, now);
     }
 
     user.isPro = true;
-    user.proSince = new Date();
+    user.plan = plan;
+    user.proStartsAt = proStartsAt;
+    user.proExpiresAt = newProExpiresAt;
+    user.proSince = user.proSince || now;
     user.paymentId = paymentId.trim();
     await user.save();
 
     res.json({ 
       message: "Upgraded to Pro successfully!", 
       isPro: true, 
+      plan: user.plan,
+      proStartsAt: user.proStartsAt,
+      proExpiresAt: user.proExpiresAt,
       proSince: user.proSince 
     });
   } catch (error) {
@@ -176,14 +197,17 @@ exports.upgradeToPro = async (req, res) => {
 // GET /api/user/pro-status
 exports.getProStatus = async (req, res) => {
   try {
-    const user = await User.findById(req.user).select("isPro proSince");
+    const user = await User.findById(req.user).select("isPro proSince proStartsAt proExpiresAt plan");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ 
-      isPro: user.isPro || false, 
-      proSince: user.proSince || null 
+    res.json({
+      isPro: isProActive(user),
+      plan: user.plan || null,
+      proSince: user.proSince || null,
+      proStartsAt: user.proStartsAt || null,
+      proExpiresAt: user.proExpiresAt || null
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -199,7 +223,11 @@ exports.resetPro = async (req, res) => {
     }
 
     user.isPro = false;
-    user.proSince = undefined;
+    user.plan = undefined;
+    // Preserve original activation timestamp for legacy reference
+    // user.proSince remains unchanged
+    user.proStartsAt = undefined;
+    user.proExpiresAt = undefined;
     await user.save();
 
     res.json({ message: "Pro status reset", isPro: false });

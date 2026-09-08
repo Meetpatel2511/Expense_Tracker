@@ -15,6 +15,7 @@ const {
   parseMonthYear
 } = require("../middleware/validation");
 const mongoose = require("mongoose");
+const { isProActive } = require("../middleware/proMiddleware");
 
 
 // ADD EXPENSE
@@ -598,7 +599,7 @@ exports.getDashboardData = async (req, res) => {
     });
 
     // Generate Smart Alerts (Pro users only)
-    const isPro = Boolean(user && user.isPro);
+    const isPro = isProActive(user);
     const alerts = isPro
       ? generateSmartAlerts({ 
           expenses: currentExpenses, 
@@ -696,12 +697,12 @@ exports.addRecurringExpense = async (req, res) => {
     }
 
     // Check Pro limits for Free accounts (Max 2 recurring bills)
-    const user = await User.findById(req.user).select("isPro");
+    const user = await User.findById(req.user).select("isPro proExpiresAt");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (!user.isPro) {
+    if (!isProActive(user)) {
       const recurringCount = await RecurringExpense.countDocuments({ user: req.user });
       if (recurringCount >= 2) {
         return res.status(403).json({

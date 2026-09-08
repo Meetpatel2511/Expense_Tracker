@@ -30,6 +30,7 @@ const createTestApp = (userId = "507f1f77bcf86cd799439011") => {
 
 test("Step 1B: Backend Pro Feature Enforcement (Family & Recurring Limits)", async (t) => {
   const originalUserFindById = User.findById;
+  const originalUserFind = User.find;
   const originalUserExists = User.exists;
   const originalUserFindByIdAndUpdate = User.findByIdAndUpdate;
   const originalFamilyFindById = Family.findById;
@@ -39,6 +40,7 @@ test("Step 1B: Backend Pro Feature Enforcement (Family & Recurring Limits)", asy
 
   t.afterEach(() => {
     User.findById = originalUserFindById;
+    User.find = originalUserFind;
     User.exists = originalUserExists;
     User.findByIdAndUpdate = originalUserFindByIdAndUpdate;
     Family.findById = originalFamilyFindById;
@@ -102,7 +104,7 @@ test("Step 1B: Backend Pro Feature Enforcement (Family & Recurring Limits)", asy
       save: async function () { return this; }
     };
     Family.findById = async () => mockFamily;
-    User.exists = async () => false; // No Pro member in family
+    User.find = () => ({ select: async () => [] }); // No Pro member in family
 
     const res = await request(app)
       .post("/api/family/join")
@@ -135,6 +137,7 @@ test("Step 1B: Backend Pro Feature Enforcement (Family & Recurring Limits)", asy
       save: async function () { return this; }
     };
     Family.findById = async () => mockFamily;
+    User.find = () => ({ select: async () => [] });
 
     const res = await request(app)
       .post("/api/family/join")
@@ -167,7 +170,7 @@ test("Step 1B: Backend Pro Feature Enforcement (Family & Recurring Limits)", asy
     };
     Family.findById = async () => mockFamily;
     // Family creator is Pro
-    User.exists = async () => true;
+    User.find = () => ({ select: async () => [{ _id: "507f1f77bcf86cd799439001", isPro: true }] });
 
     const res = await request(app)
       .post("/api/family/join")
@@ -195,7 +198,7 @@ test("Step 1B: Backend Pro Feature Enforcement (Family & Recurring Limits)", asy
       members: ["507f1f77bcf86cd799439001", "507f1f77bcf86cd799439002"],
       save: async function () { return this; }
     });
-    User.exists = async () => false;
+    User.find = () => ({ select: async () => [] });
 
     // Direct HTTP POST
     const res = await request(app)
