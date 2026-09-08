@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/clerk-react";
 import { NavLink } from "react-router-dom";
-import { FiGrid, FiPlusCircle, FiPieChart, FiUsers, FiTrendingUp, FiHelpCircle, FiX } from "react-icons/fi";
+import { FiGrid, FiPlusCircle, FiPieChart, FiUsers, FiTrendingUp, FiHelpCircle, FiX, FiShield } from "react-icons/fi";
 import UpgradeModal from "./UpgradeModal";
 import API from "../utils/api";
 import { usePro } from "../context/ProContext";
+import { useAdmin } from "../context/AdminContext";
 
 const navItems = [
   { path: "/", icon: <FiGrid />, label: "Dashboard" },
@@ -17,6 +18,7 @@ const navItems = [
 function Sidebar({ isOpen, toggleSidebar }) {
   const { user } = useUser();
   const { isPro, refreshProStatus } = usePro();
+  const { isAdmin } = useAdmin();
   const [showModal, setShowModal] = useState(false);
 
   const handleUpgrade = async (paymentData) => {
@@ -120,6 +122,47 @@ function Sidebar({ isOpen, toggleSidebar }) {
             <div style={{ fontSize: '0.95rem' }}>{item.label}</div>
           </NavLink>
         ))}
+
+        {isAdmin && (
+          <NavLink
+            to="/admin/payments"
+            className="nav-item"
+            style={({ isActive }) => ({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              marginBottom: '8px',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'var(--transition)',
+              backgroundColor: isActive ? 'rgba(124, 58, 237, 0.15)' : 'transparent',
+              color: isActive ? 'var(--bg-accent)' : 'var(--text-secondary)',
+              fontWeight: isActive ? 600 : 500
+            })}
+          >
+            <div style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', flexShrink: 0, color: 'var(--bg-accent)' }}>
+              <FiShield />
+            </div>
+            <div style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <span>Payment Review</span>
+              <span
+                style={{
+                  fontSize: '0.65rem',
+                  padding: '2px 6px',
+                  borderRadius: '6px',
+                  background: 'rgba(124, 58, 237, 0.2)',
+                  color: '#a78bfa',
+                  fontWeight: 700,
+                  textTransform: 'uppercase'
+                }}
+              >
+                Admin
+              </span>
+            </div>
+          </NavLink>
+        )}
       </nav>
 
       {/* Upgrade Card (Hide if already Pro) */}
