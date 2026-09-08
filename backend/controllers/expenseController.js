@@ -597,13 +597,16 @@ exports.getDashboardData = async (req, res) => {
         categoryMap[e.category] = (categoryMap[e.category] || 0) + e.amount;
     });
 
-    // Generate Smart Alerts
-    const alerts = generateSmartAlerts({ 
-      expenses: currentExpenses, 
-      budgets, 
-      transactions: currentExpenses, 
-      user 
-    });
+    // Generate Smart Alerts (Pro users only)
+    const isPro = Boolean(user && user.isPro);
+    const alerts = isPro
+      ? generateSmartAlerts({ 
+          expenses: currentExpenses, 
+          budgets, 
+          transactions: currentExpenses, 
+          user 
+        })
+      : [];
 
     res.json({
       summary: {

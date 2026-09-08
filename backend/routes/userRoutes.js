@@ -2,12 +2,13 @@ const express = require("express");
 const router = express.Router();
 const { getProfile, updateProfile, createOrder, upgradeToPro, getProStatus, resetPro, getHealthScore } = require("../controllers/userController");
 const authMiddleware = require("../middleware/authMiddleware");
+const requirePro = require("../middleware/proMiddleware");
 
 // All user routes require authentication
 router.use(authMiddleware);
 
 router.get("/profile", getProfile);
-router.get("/health-score", getHealthScore);
+router.get("/health-score", requirePro, getHealthScore);
 router.put("/update", updateProfile);
 router.post("/create-order", createOrder);
 router.post("/upgrade-pro", upgradeToPro);
