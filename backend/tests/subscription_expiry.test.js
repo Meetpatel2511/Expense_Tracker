@@ -71,6 +71,48 @@ test("Step 1C: Subscription Expiration, Helpers, and Pro Authorization Suite", a
     assert.equal(newExpiry.getTime(), expected.getTime());
   });
 
+  await t.test("5b. calculateProExpiration: Active Monthly -> Yearly cross-plan extension adds 365 days to existing expiry", () => {
+    const existingExpiry = new Date("2026-10-15T00:00:00Z");
+    const now = new Date("2026-09-20T00:00:00Z");
+    const extendedExpiry = calculateProExpiration("YEARLY", existingExpiry, now);
+    const expected = new Date(existingExpiry.getTime() + 365 * 24 * 60 * 60 * 1000);
+    assert.equal(extendedExpiry.getTime(), expected.getTime());
+  });
+
+  await t.test("5c. calculateProExpiration: Active Yearly -> Monthly cross-plan extension adds 30 days to existing expiry", () => {
+    const existingExpiry = new Date("2027-09-01T00:00:00Z");
+    const now = new Date("2026-12-01T00:00:00Z");
+    const extendedExpiry = calculateProExpiration("MONTHLY", existingExpiry, now);
+    const expected = new Date(existingExpiry.getTime() + 30 * 24 * 60 * 60 * 1000);
+    assert.equal(extendedExpiry.getTime(), expected.getTime());
+  });
+
+  // Step 2 Pricing & No-Trial Assertions
+  await t.test("5d. Authoritative Pricing: MONTHLY = 14900 paise, YEARLY = 99900 paise", () => {
+    const { PRICING_PLANS, getPlanPricing } = require("../config/pricing");
+    assert.equal(PRICING_PLANS.MONTHLY.amount, 14900);
+    assert.equal(PRICING_PLANS.MONTHLY.priceINR, 149);
+    assert.equal(PRICING_PLANS.MONTHLY.durationDays, 30);
+    assert.equal(PRICING_PLANS.MONTHLY.currency, "INR");
+
+    assert.equal(PRICING_PLANS.YEARLY.amount, 99900);
+    assert.equal(PRICING_PLANS.YEARLY.priceINR, 999);
+    assert.equal(PRICING_PLANS.YEARLY.durationDays, 365);
+    assert.equal(PRICING_PLANS.YEARLY.currency, "INR");
+
+    const monthlyMeta = getPlanPricing("MONTHLY");
+    assert.equal(monthlyMeta.amount, 14900);
+    const yearlyMeta = getPlanPricing("YEARLY");
+    assert.equal(yearlyMeta.amount, 99900);
+  });
+
+  await t.test("5e. No-Trial Policy: User schema must not have trial fields", () => {
+    const userPaths = Object.keys(User.schema.paths);
+    assert.equal(userPaths.includes("trialStartsAt"), false);
+    assert.equal(userPaths.includes("trialExpiresAt"), false);
+    assert.equal(userPaths.includes("trialUsed"), false);
+  });
+
   // 2. isProActive Helper Evaluation
   await t.test("6. isProActive: returns false for non-Pro / null user", () => {
     assert.equal(isProActive(null), false);

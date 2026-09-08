@@ -40,7 +40,7 @@ test("HTTP Endpoint Security: POST /api/user/create-order & /upgrade-pro", async
 
   // --- SECTION A: ORDER CREATION TESTS ---
 
-  await t.test("1. createOrder: default plan creates MONTHLY order (19900 INR)", async () => {
+  await t.test("1. createOrder: default plan creates MONTHLY order (14900 INR)", async () => {
     let capturedOrder = null;
     Order.create = async (doc) => {
       capturedOrder = doc;
@@ -53,11 +53,11 @@ test("HTTP Endpoint Security: POST /api/user/create-order & /upgrade-pro", async
 
     assert.equal(res.status, 200);
     assert.equal(res.body.plan, "MONTHLY");
-    assert.equal(res.body.amount, 19900);
+    assert.equal(res.body.amount, 14900);
     assert.equal(res.body.currency, "INR");
     assert.ok(res.body.orderId.startsWith("order_test_"));
     assert.equal(capturedOrder.plan, "MONTHLY");
-    assert.equal(capturedOrder.amount, 19900);
+    assert.equal(capturedOrder.amount, 14900);
     assert.equal(capturedOrder.status, "created");
   });
 

@@ -4,21 +4,23 @@ import { FiX, FiCheck, FiStar, FiZap, FiPieChart, FiUsers, FiDownload } from "re
 import RazorpayCheckout from "./RazorpayCheckout";
 
 function UpgradeModal({ onClose, onUpgrade }) {
+  const [selectedPlan, setSelectedPlan] = useState("MONTHLY");
   const [showCheckout, setShowCheckout] = useState(false);
 
   const features = [
-    { icon: <FiPieChart />, text: "Advanced analytics & trends" },
-    { icon: <FiZap />, text: "AI-powered financial insights" },
-    { icon: <FiUsers />, text: "Unlimited family group tracking" },
-    { icon: <FiDownload />, text: "Export custom PDF/CSV reports" }
+    { icon: <FiZap />, text: "Financial Health Score & Smart Alerts" },
+    { icon: <FiUsers />, text: "Unlimited family group members & recurring bills" },
+    { icon: <FiDownload />, text: "Executive Financial PDF & Excel statement exports" },
+    { icon: <FiPieChart />, text: "Advanced analytics, trends & category breakdown" }
   ];
 
   const modalJSX = (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 100000 }}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "520px", padding: "32px" }}>
         {showCheckout ? (
-          <RazorpayCheckout 
-            totalAmount={199}
+          <RazorpayCheckout
+            selectedPlan={selectedPlan}
+            totalAmount={selectedPlan === "YEARLY" ? 999 : 149}
             onCancel={() => setShowCheckout(false)}
             onSuccess={(paymentData) => {
               onUpgrade(paymentData);
@@ -31,70 +33,153 @@ function UpgradeModal({ onClose, onUpgrade }) {
               <FiX />
             </button>
 
-            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <div style={{ 
-                width: '64px', 
-                height: '64px', 
-                borderRadius: '20px', 
-                background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)', 
-                color: '#fff', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: '2rem',
-                margin: '0 auto 20px',
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '18px',
+                background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.75rem',
+                margin: '0 auto 16px',
                 boxShadow: '0 10px 20px rgba(124, 58, 237, 0.3)'
               }}>
                 <FiStar />
               </div>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '8px' }}>Upgrade to Pro 💎</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Experience the full power of FinTrack</p>
+              <h2 style={{ fontSize: '1.65rem', fontWeight: 800, marginBottom: '6px' }}>Upgrade to Pro 💎</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Experience the full power and intelligence of FinTrack</p>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '40px' }}>
+            {/* Plan Selector */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '14px',
+              marginBottom: '24px'
+            }}>
+              {/* Monthly Card */}
+              <div
+                onClick={() => setSelectedPlan("MONTHLY")}
+                style={{
+                  position: 'relative',
+                  padding: '16px',
+                  borderRadius: '14px',
+                  background: selectedPlan === "MONTHLY" ? 'rgba(124, 58, 237, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                  border: `2px solid ${selectedPlan === "MONTHLY" ? '#7c3aed' : 'var(--border-light, rgba(255, 255, 255, 0.08))'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: selectedPlan === "MONTHLY" ? '#a78bfa' : 'var(--text-secondary)' }}>
+                    MONTHLY
+                  </span>
+                  <div style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    border: `2px solid ${selectedPlan === "MONTHLY" ? '#7c3aed' : 'var(--border-light)'}`,
+                    background: selectedPlan === "MONTHLY" ? '#7c3aed' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {selectedPlan === "MONTHLY" && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />}
+                  </div>
+                </div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginBottom: '2px' }}>
+                  ₹149<span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>/month</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Billed every 30 days
+                </div>
+              </div>
+
+              {/* Yearly Card */}
+              <div
+                onClick={() => setSelectedPlan("YEARLY")}
+                style={{
+                  position: 'relative',
+                  padding: '16px',
+                  borderRadius: '14px',
+                  background: selectedPlan === "YEARLY" ? 'rgba(124, 58, 237, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                  border: `2px solid ${selectedPlan === "YEARLY" ? '#7c3aed' : 'var(--border-light, rgba(255, 255, 255, 0.08))'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left'
+                }}
+              >
+                <div style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  right: '12px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#fff',
+                  fontSize: '0.65rem',
+                  fontWeight: 800,
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
+                  letterSpacing: '0.3px'
+                }}>
+                  SAVE 44%
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: selectedPlan === "YEARLY" ? '#a78bfa' : 'var(--text-secondary)' }}>
+                    YEARLY
+                  </span>
+                  <div style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    border: `2px solid ${selectedPlan === "YEARLY" ? '#7c3aed' : 'var(--border-light)'}`,
+                    background: selectedPlan === "YEARLY" ? '#7c3aed' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {selectedPlan === "YEARLY" && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />}
+                  </div>
+                </div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginBottom: '2px' }}>
+                  ₹999<span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>/year</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>
+                  Best Value — Save 44%
+                </div>
+              </div>
+            </div>
+
+            {/* Feature List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px', padding: '0 4px' }}>
               {features.map((feature, index) => (
-                <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ color: '#10b981', fontSize: '1.2rem', display: 'flex' }}>
+                <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ color: '#10b981', fontSize: '1.1rem', display: 'flex', flexShrink: 0 }}>
                     <FiCheck />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ color: '#a78bfa', fontSize: '1.1rem' }}>{feature.icon}</span>
-                    <span style={{ fontSize: '0.95rem', fontWeight: 500 }}>{feature.text}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ color: '#a78bfa', fontSize: '1rem', flexShrink: 0 }}>{feature.icon}</span>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 500, color: 'var(--text-secondary, #cbd5e1)' }}>{feature.text}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr 1fr', 
-              gap: '16px', 
-              marginBottom: '32px',
-              padding: '20px',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid var(--border-light)',
-              borderRadius: '16px'
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Free Plan</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>₹0</div>
-              </div>
-              <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-light)' }}>
-                <div style={{ fontSize: '0.75rem', color: '#a78bfa', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Pro Plan</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>₹199<span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>/mo</span></div>
-              </div>
-            </div>
-
-            <button 
+            <button
               onClick={() => setShowCheckout(true)}
-              style={{ 
-                width: '100%', 
-                padding: '16px', 
-                borderRadius: '14px', 
-                border: 'none', 
-                background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)', 
-                color: '#fff', 
-                fontWeight: 700, 
+              style={{
+                width: '100%',
+                padding: '15px',
+                borderRadius: '12px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                color: '#fff',
+                fontWeight: 700,
                 fontSize: '1rem',
                 cursor: 'pointer',
                 boxShadow: '0 10px 25px -5px rgba(124, 58, 237, 0.4)',
@@ -103,11 +188,11 @@ function UpgradeModal({ onClose, onUpgrade }) {
               onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
               onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
             >
-              Upgrade Now
+              Continue with {selectedPlan === "YEARLY" ? "Yearly Pro (₹999)" : "Monthly Pro (₹149)"}
             </button>
 
-            <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Secure payment simulated. Cancel anytime.
+            <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Secure server-verified checkout. Non-destructive expiration.
             </p>
           </>
         )}

@@ -7,12 +7,21 @@
 
 const PRICING_PLANS = {
   MONTHLY: {
-    amount: 19900, // ₹199
-    currency: "INR"
+    amount: 14900, // ₹149 (in paise)
+    priceINR: 149,
+    currency: "INR",
+    durationDays: 30,
+    label: "Monthly Pro",
+    billingInterval: "/month"
   },
   YEARLY: {
-    amount: 99900, // ₹999
-    currency: "INR"
+    amount: 99900, // ₹999 (in paise)
+    priceINR: 999,
+    currency: "INR",
+    durationDays: 365,
+    label: "Yearly Pro",
+    billingInterval: "/year",
+    badge: "Best Value — Save 44%"
   }
 };
 
@@ -28,7 +37,7 @@ const isValidPlan = (plan) => typeof plan === "string" && VALID_PLANS.includes(p
 /**
  * Retrieves pricing metadata for a given plan.
  * @param {string} [plan="MONTHLY"]
- * @returns {{ amount: number, currency: string } | null}
+ * @returns {{ amount: number, priceINR: number, currency: string, durationDays: number, label: string, billingInterval: string, badge?: string } | null}
  */
 const getPlanPricing = (plan = "MONTHLY") => {
   if (!plan || typeof plan !== "string") return null;

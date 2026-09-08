@@ -19,7 +19,7 @@ const loadRazorpayScript = () => {
   });
 };
 
-function RazorpayCheckout({ totalAmount = 199, onCancel, onSuccess }) {
+function RazorpayCheckout({ selectedPlan = "MONTHLY", totalAmount = 149, onCancel, onSuccess }) {
   const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,19 +38,21 @@ function RazorpayCheckout({ totalAmount = 199, onCancel, onSuccess }) {
           throw new Error("Unable to load Razorpay SDK. Please check your internet connection.");
         }
 
-        // 2. Create Razorpay Test Order via Backend API
-        const orderRes = await API.post("/user/create-order");
+        // 2. Create Razorpay Test Order via Backend API with server-authoritative plan
+        const orderRes = await API.post("/user/create-order", {
+          plan: selectedPlan
+        });
         const { orderId, amount, currency, keyId } = orderRes.data;
 
         if (!isMounted) return;
 
-        // 3. Configure Razorpay Test Checkout options
+        // 3. Configure Razorpay Test Checkout options using authoritative backend response
         const options = {
           key: keyId || import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_key",
           amount: amount || totalAmount * 100,
           currency: currency || "INR",
           name: "FinTrack",
-          description: "Upgrade to Pro Plan (Test Mode)",
+          description: `Upgrade to ${selectedPlan === "YEARLY" ? "Yearly Pro" : "Monthly Pro"} (Test Mode)`,
           order_id: orderId,
           handler: function (response) {
             // Forward genuine Razorpay checkout identifiers to caller
@@ -104,7 +106,7 @@ function RazorpayCheckout({ totalAmount = 199, onCancel, onSuccess }) {
     return () => {
       isMounted = false;
     };
-  }, [totalAmount, onCancel, onSuccess, user]);
+  }, [selectedPlan, totalAmount, onCancel, onSuccess, user]);
 
   if (!loading && !error) {
     return null;
