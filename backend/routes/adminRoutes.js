@@ -3,6 +3,7 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const requireAdmin = require("../middleware/requireAdmin");
 const adminPaymentController = require("../controllers/adminPaymentController");
+const adminDashboardController = require("../controllers/adminDashboardController");
 
 // All routes under /api/admin require authentication + ADMIN role
 router.use(authMiddleware);
@@ -24,6 +25,14 @@ router.get("/me", (req, res) => {
     }
   });
 });
+
+/**
+ * Admin SaaS Dashboard & Management Routes
+ */
+router.get("/dashboard", adminDashboardController.getDashboardOverview);
+router.get("/subscriptions", adminDashboardController.getSubscriptions);
+router.get("/users", adminDashboardController.getUsers);
+router.get("/analytics", adminDashboardController.getAnalytics);
 
 /**
  * Admin Payment Request Review Routes

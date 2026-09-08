@@ -7,6 +7,7 @@ import { Toaster } from "react-hot-toast";
 
 import Layout from "./components/Layout";
 import AdminRoute from "./components/AdminRoute";
+import AdminLayout from "./components/admin/AdminLayout";
 import Dashboard from "./pages/Dashboard";
 import AddExpense from "./pages/AddExpense";
 import AddIncome from "./pages/AddIncome";
@@ -14,7 +15,11 @@ import Budget from "./pages/Budget";
 import Family from "./pages/Family";
 import Profile from "./pages/Profile";
 import HelpCenter from "./pages/HelpCenter";
+import AdminDashboard from "./pages/AdminDashboard";
 import AdminPayments from "./pages/AdminPayments";
+import AdminSubscriptions from "./pages/AdminSubscriptions";
+import AdminUsers from "./pages/AdminUsers";
+import AdminAnalytics from "./pages/AdminAnalytics";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -157,7 +162,7 @@ function App() {
                   } 
                 />
 
-                {/* Protected routes */}
+                {/* Normal User Protected routes */}
                 <Route
                   element={
                     <>
@@ -177,11 +182,28 @@ function App() {
                   <Route path="/family" element={<Family />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/help" element={<HelpCenter />} />
+                </Route>
 
-                  {/* Admin Protected Routes */}
-                  <Route element={<AdminRoute />}>
-                    <Route path="/admin/payments" element={<AdminPayments />} />
-                  </Route>
+                {/* Dedicated SaaS Admin Protected Routes */}
+                <Route
+                  element={
+                    <>
+                      <SignedIn>
+                        <AdminRoute>
+                          <AdminLayout />
+                        </AdminRoute>
+                      </SignedIn>
+                      <SignedOut>
+                        <Navigate to="/sign-in" />
+                      </SignedOut>
+                    </>
+                  }
+                >
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/payments" element={<AdminPayments />} />
+                  <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+                  <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/admin/analytics" element={<AdminAnalytics />} />
                 </Route>
 
                 {/* Catch-all */}

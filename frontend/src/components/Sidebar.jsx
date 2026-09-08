@@ -125,7 +125,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
 
         {isAdmin && (
           <NavLink
-            to="/admin/payments"
+            to="/admin"
             className="nav-item"
             style={({ isActive }) => ({
               display: 'flex',
@@ -146,7 +146,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
               <FiShield />
             </div>
             <div style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-              <span>Payment Review</span>
+              <span>Admin Portal</span>
               <span
                 style={{
                   fontSize: '0.65rem',
