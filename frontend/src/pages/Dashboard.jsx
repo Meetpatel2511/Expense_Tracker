@@ -2,9 +2,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import API from "../utils/api";
 import { useUser } from "@clerk/clerk-react";
 import { FiDollarSign, FiTrendingUp, FiCreditCard, FiPieChart, FiDownload, FiZap, FiLock, FiCalendar, FiFileText } from "react-icons/fi";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { exportToExcel } from "../utils/exportUtils";
+import { exportToExcel, fetchAllPeriodTransactions } from "../utils/exportUtils";
+import { generateFinancialReportPDF } from "../utils/pdfReportGenerator";
 
 import StatCard from "../components/StatCard";
 import Charts, { CategoryPieChart } from "../components/Charts";
@@ -17,7 +16,7 @@ import { usePro } from "../context/ProContext";
 
 function Dashboard() {
   const { user } = useUser();
-  const { isPro, loading: proLoading } = usePro();
+  const { isPro, isProActive, loading: proLoading } = usePro();
   
   // State for Selection
   const now = new Date();
@@ -55,7 +54,8 @@ function Dashboard() {
             setMonthlyData(data.monthlyData);
             setBudget(data.budgets);
             setCategories(data.categories);
-            setAlerts(data.alerts);
+            // Strictly guard cached Smart Alerts by current active Pro entitlement
+            setAlerts(isProActive ? (data.alerts || []) : []);
             setLastUpdated(data.lastUpdated);
             setLoading(false);
             // Even if cache is valid, we'll refresh in background quietly
@@ -74,7 +74,7 @@ function Dashboard() {
       setMonthlyData(freshData.monthlyData);
       setBudget(freshData.budgets);
       setCategories(freshData.categories);
-      setAlerts(freshData.alerts);
+      setAlerts(isProActive ? (freshData.alerts || []) : []);
       setLastUpdated(freshData.lastUpdated);
 
       // 3. Update Cache
@@ -91,98 +91,75 @@ function Dashboard() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [selectedMonth, selectedYear, CACHE_KEY, CACHE_TTL, loading]);
+  }, [selectedMonth, selectedYear, CACHE_KEY, CACHE_TTL, loading, isProActive]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const handleDownloadReport = () => {
-    if (!isPro) {
-        alert("Pro Feature 🔒\n\nUpgrade to Pro to download reports 📄");
-        return;
+  // Synchronize alerts state if Pro status changes
+  useEffect(() => {
+    if (!isProActive) {
+      setAlerts([]);
+    }
+  }, [isProActive]);
+
+  const handleDownloadReport = async () => {
+    if (!isProActive) {
+      alert("Pro Feature 🔒\n\nUpgrade to Pro to download financial reports 📄");
+      return;
     }
 
     try {
-        const doc = new jsPDF();
-        
-        // Month Names Map
-        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        const monthLabel = monthNames[selectedMonth - 1] || "Monthly";
+      // Retrieve complete detailed income and expense transaction records for the entire reporting month
+      const startDate = new Date(Date.UTC(selectedYear, selectedMonth - 1, 1)).toISOString();
+      const endDate = new Date(Date.UTC(selectedYear, selectedMonth, 0, 23, 59, 59, 999)).toISOString();
 
-        // 1. Title & Header
-        doc.setFontSize(22);
-        doc.setTextColor(124, 58, 237); // Premium Purple
-        doc.text("FinTrack Report", 14, 20);
+      const [fullExpenses, fullIncomes] = await Promise.all([
+        fetchAllPeriodTransactions(API, "/expense", startDate, endDate).catch(() => expenses || []),
+        fetchAllPeriodTransactions(API, "/income", startDate, endDate).catch(() => [])
+      ]);
 
-        doc.setFontSize(12);
-        doc.setTextColor(100);
-        doc.text(`Month: ${monthLabel} ${selectedYear}`, 14, 30);
-        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 38);
-
-        // 2. Financial Summary
-        doc.setFontSize(12);
-        doc.setTextColor(0);
-        doc.text(`Total Income: Rs. ${(summary?.totalIncome || 0).toLocaleString()}`, 14, 48);
-        doc.text(`Total Expense: Rs. ${(summary?.totalExpense || 0).toLocaleString()}`, 14, 56);
-        doc.text(`Savings: Rs. ${(summary?.savings || 0).toLocaleString()}`, 14, 64);
-
-        // 3. Category Breakdown Table
-        const categoryList = Object.entries(categories || {}).map(([category, amount]) => ({
-            category,
-            amount
-        }));
-
-        autoTable(doc, {
-            startY: 75,
-            head: [["Category", "Amount"]],
-            body: (categoryList || []).map(c => [
-                c.category,
-                `Rs. ${(c.amount || 0).toLocaleString()}`
-            ]),
-            headStyles: { fillColor: [124, 58, 237] },
-            theme: 'grid'
-        });
-
-        // 4. Detailed Transaction List (if data exists)
-        if (expenses && expenses.length > 0) {
-            const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : 150;
-            
-            doc.text("Detailed Transactions", 14, finalY + 15);
-            
-            autoTable(doc, {
-                startY: finalY + 20,
-                head: [['Date', 'Category', 'Note', 'Amount']],
-                body: (expenses || []).map(exp => [
-                    new Date(exp.date).toLocaleDateString(),
-                    exp.category || "Other",
-                    exp.note || "-",
-                    `Rs. ${(exp.amount || 0).toLocaleString()}`
-                ]),
-                headStyles: { fillColor: [59, 130, 246] }
-            });
-        }
-
-        doc.save(`FinTrack_Report_${selectedMonth}_${selectedYear}.pdf`);
+      generateFinancialReportPDF({
+        month: selectedMonth,
+        year: selectedYear,
+        summary,
+        categories,
+        expenses: fullExpenses && fullExpenses.length > 0 ? fullExpenses : (expenses || []),
+        incomes: fullIncomes,
+        budgets: budget,
+        monthlyData,
+        alerts: isProActive ? alerts : [],
+        userName: user?.fullName || user?.firstName || ""
+      });
     } catch (pdfError) {
-        console.error("PDF Final Error:", pdfError);
-        alert("❌ PDF Generation Issue.\n\nPlease check your data and try again.");
+      console.error("PDF Final Error:", pdfError);
+      alert("❌ PDF Generation Issue.\n\nPlease check your data and try again.");
     }
   };
 
-  const handleExportExcel = () => {
-    if (!isPro) {
-        alert("Pro Feature 🔒\n\nUpgrade to Pro to export as Excel 📊");
-        return;
+  const handleExportExcel = async () => {
+    if (!isProActive) {
+      alert("Pro Feature 🔒\n\nUpgrade to Pro to export as Excel 📊");
+      return;
     }
 
-    const fileName = `FinTrack_Data_${selectedMonth}_${selectedYear}`;
-    const success = exportToExcel(expenses, fileName);
-    
-    if (success) {
-        // Optional: show a toast or notification
-    } else {
+    try {
+      const startDate = new Date(Date.UTC(selectedYear, selectedMonth - 1, 1)).toISOString();
+      const endDate = new Date(Date.UTC(selectedYear, selectedMonth, 0, 23, 59, 59, 999)).toISOString();
+
+      const fullExpenses = await fetchAllPeriodTransactions(API, "/expense", startDate, endDate).catch(() => expenses || []);
+      const recordsToExport = fullExpenses && fullExpenses.length > 0 ? fullExpenses : (expenses || []);
+
+      const fileName = `FinTrack_Data_${selectedMonth}_${selectedYear}`;
+      const success = exportToExcel(recordsToExport, fileName);
+
+      if (!success) {
         alert("Failed to generate Excel file.");
+      }
+    } catch (err) {
+      console.error("Excel Export Error:", err);
+      alert("Failed to generate Excel file.");
     }
   };
 

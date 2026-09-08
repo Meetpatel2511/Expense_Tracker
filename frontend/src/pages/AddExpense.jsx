@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { usePro } from "../context/ProContext";
+import { exportToCSV } from "../utils/exportUtils";
 
 const CATEGORIES = [
   "Food & Dining", "Shopping", "Transportation", "Entertainment",
@@ -135,44 +136,18 @@ function AddExpense() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const exportToCSV = () => {
+  const handleExportCSV = () => {
     if (expenses.length === 0) {
       toast.error("No data to export");
       return;
     }
 
-    const headers = ["Date", "Category", "Note", "Amount (Rs)"];
-    const csvRows = [headers.join(",")];
-
-    expenses.forEach(exp => {
-      // M10: Escape potential formula injection (CSV Injection)
-      const sanitizeCSV = (val) => {
-        const str = String(val);
-        if (str.startsWith("=") || str.startsWith("+") || str.startsWith("-") || str.startsWith("@")) {
-          return `'${str}`;
-        }
-        return str;
-      };
-
-      const row = [
-        new Date(exp.date).toLocaleDateString(),
-        `"${sanitizeCSV(exp.category)}"`,
-        `"${sanitizeCSV(exp.note || "-")}"`,
-        exp.amount
-      ];
-      csvRows.push(row.join(","));
-    });
-
-    const csvString = csvRows.join("\n");
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `FinTrack_Expenses_${new Date().toLocaleDateString()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("CSV Exported successfully!");
+    const success = exportToCSV(expenses, `FinTrack_Expenses_${new Date().toLocaleDateString()}`);
+    if (success) {
+      toast.success("CSV Exported successfully!");
+    } else {
+      toast.error("Failed to export CSV");
+    }
   };
 
   const exportToPDF = () => {
@@ -342,7 +317,7 @@ function AddExpense() {
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
-                  onClick={exportToCSV}
+                  onClick={handleExportCSV}
                   className="btn-secondary" 
                   style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}
                 >

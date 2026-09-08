@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { usePro } from "../context/ProContext";
+import { exportToCSV } from "../utils/exportUtils";
 
 const SOURCES = [
   "Salary", "Freelance", "Business", "Investment",
@@ -129,34 +130,18 @@ function AddIncome() {
     }
   };
 
-  const exportToCSV = () => {
+  const handleExportCSV = () => {
     if (incomes.length === 0) {
       toast.error("No data to export");
       return;
     }
 
-    const headers = ["Date", "Source", "Amount (Rs)"];
-    const csvRows = [headers.join(",")];
-
-    incomes.forEach(inc => {
-      const row = [
-        new Date(inc.date).toLocaleDateString(),
-        `"${inc.source}"`,
-        inc.amount
-      ];
-      csvRows.push(row.join(","));
-    });
-
-    const csvString = csvRows.join("\n");
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `FinTrack_Incomes_${new Date().toLocaleDateString()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("CSV Exported successfully!");
+    const success = exportToCSV(incomes, `FinTrack_Incomes_${new Date().toLocaleDateString()}`);
+    if (success) {
+      toast.success("CSV Exported successfully!");
+    } else {
+      toast.error("Failed to export CSV");
+    }
   };
 
   const exportToPDF = () => {
@@ -293,7 +278,7 @@ function AddIncome() {
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
-                  onClick={exportToCSV}
+                  onClick={handleExportCSV}
                   className="btn-secondary" 
                   style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
