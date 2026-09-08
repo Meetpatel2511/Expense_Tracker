@@ -169,6 +169,17 @@ paymentRequestSchema.index({ userId: 1, createdAt: -1 });
 // Compound index for administrative review queue
 paymentRequestSchema.index({ status: 1, createdAt: 1 });
 
+// Partial unique index enforcing maximum ONE active payment request (UNDER_REVIEW or NEEDS_MORE_INFO) per user
+paymentRequestSchema.index(
+  { userId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ["UNDER_REVIEW", "NEEDS_MORE_INFO"] }
+    }
+  }
+);
+
 // Globally unique UTR index (allows missing/sparse UTRs, enforces strict uniqueness when present)
 paymentRequestSchema.index(
   { utr: 1 },
@@ -182,3 +193,4 @@ paymentRequestSchema.index(
 paymentRequestSchema.statics.normalizeUtr = normalizeUtr;
 
 module.exports = mongoose.model("PaymentRequest", paymentRequestSchema);
+

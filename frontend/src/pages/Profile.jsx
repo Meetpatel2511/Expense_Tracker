@@ -9,7 +9,8 @@ import {
   FiShield,
   FiExternalLink,
   FiCheckCircle,
-  FiAlertCircle
+  FiAlertCircle,
+  FiClock
 } from "react-icons/fi";
 import API from "../utils/api";
 import { usePro } from "../context/ProContext";
@@ -20,13 +21,21 @@ function Profile() {
   const { openUserProfile } = useClerk();
   const { isPro: contextIsPro, refreshProStatus } = usePro();
   const [profile, setProfile] = useState(null);
+  const [activePaymentRequest, setActivePaymentRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const fetchProfile = async () => {
     try {
-      const res = await API.get("/user/profile");
-      setProfile(res.data);
+      const [profileRes, requestsRes] = await Promise.all([
+        API.get("/user/profile"),
+        API.get("/payment-request/my-requests").catch(() => ({ data: [] }))
+      ]);
+      setProfile(profileRes.data);
+      const active = (requestsRes.data || []).find(
+        (r) => r.status === "UNDER_REVIEW" || r.status === "NEEDS_MORE_INFO"
+      );
+      setActivePaymentRequest(active || null);
     } catch (err) {
       console.error("Error fetching profile:", err);
     } finally {
@@ -182,6 +191,51 @@ function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Active Manual Payment Status Banner */}
+      {activePaymentRequest && (
+        <div className="card" style={{
+          padding: '20px 24px',
+          borderRadius: '16px',
+          background: activePaymentRequest.status === 'UNDER_REVIEW' ? 'rgba(245, 158, 11, 0.06)' : 'rgba(239, 68, 68, 0.06)',
+          border: `1px solid ${activePaymentRequest.status === 'UNDER_REVIEW' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '42px', height: '42px', borderRadius: '12px',
+              background: activePaymentRequest.status === 'UNDER_REVIEW' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+              color: activePaymentRequest.status === 'UNDER_REVIEW' ? '#f59e0b' : '#ef4444',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', flexShrink: 0
+            }}>
+              <FiClock />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', marginBottom: '2px' }}>
+                {activePaymentRequest.status === 'UNDER_REVIEW'
+                  ? "Payment submitted — we're reviewing your payment."
+                  : "We need some additional information to verify your payment."}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Plan: <strong style={{ color: '#fff' }}>{activePaymentRequest.plan === 'YEARLY' ? 'Yearly Pro' : 'Monthly Pro'}</strong> • UTR: <span style={{ fontFamily: 'monospace', color: '#a78bfa' }}>{activePaymentRequest.utr}</span>
+              </div>
+            </div>
+          </div>
+          <span style={{
+            fontSize: '0.75rem', fontWeight: 700,
+            padding: '6px 12px', borderRadius: '8px',
+            background: activePaymentRequest.status === 'UNDER_REVIEW' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+            color: activePaymentRequest.status === 'UNDER_REVIEW' ? '#f59e0b' : '#ef4444',
+            border: `1px solid ${activePaymentRequest.status === 'UNDER_REVIEW' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+          }}>
+            {activePaymentRequest.status === 'UNDER_REVIEW' ? 'UNDER REVIEW' : 'NEEDS INFO'}
+          </span>
+        </div>
+      )}
 
       {/* Subscription Status Section */}
       <div className="card" style={{ padding: '28px', border: isProActive ? '1px solid rgba(124, 58, 237, 0.3)' : isExpired ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-light)' }}>

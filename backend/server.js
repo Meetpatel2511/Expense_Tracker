@@ -18,6 +18,7 @@ const incomeRoutes = require("./routes/incomeRoutes");
 const budgetRoutes = require("./routes/budgetRoutes");
 const familyRoutes = require("./routes/familyRoutes");
 const userRoutes = require("./routes/userRoutes");
+const paymentRequestRoutes = require("./routes/paymentRequestRoutes");
 
 // CORS Configuration
 const configuredOrigins = (process.env.FRONTEND_URL || "")
@@ -85,6 +86,7 @@ app.use("/api/income", incomeRoutes);
 app.use("/api/budget", budgetRoutes);
 app.use("/api/family", familyRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/payment-request", paymentRequestRoutes);
 
 // Health check
 app.get("/", (req, res) => {

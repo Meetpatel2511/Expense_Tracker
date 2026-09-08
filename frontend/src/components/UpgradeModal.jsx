@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
-import { FiX, FiCheck, FiStar, FiZap, FiPieChart, FiUsers, FiDownload } from "react-icons/fi";
+import { FiX, FiCheck, FiStar, FiZap, FiPieChart, FiUsers, FiDownload, FiCreditCard, FiSmartphone } from "react-icons/fi";
 import RazorpayCheckout from "./RazorpayCheckout";
+import UpiPaymentModal from "./UpiPaymentModal";
 
 function UpgradeModal({ onClose, onUpgrade }) {
   const [selectedPlan, setSelectedPlan] = useState("MONTHLY");
+  const [paymentMethod, setPaymentMethod] = useState(null); // null = selection screen, "RAZORPAY" or "UPI_MANUAL"
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showUpiFlow, setShowUpiFlow] = useState(false);
 
   const features = [
     { icon: <FiZap />, text: "Financial Health Score & Smart Alerts" },
@@ -13,6 +16,27 @@ function UpgradeModal({ onClose, onUpgrade }) {
     { icon: <FiDownload />, text: "Executive Financial PDF & Excel statement exports" },
     { icon: <FiPieChart />, text: "Advanced analytics, trends & category breakdown" }
   ];
+
+  const handleContinue = () => {
+    if (paymentMethod === "RAZORPAY") {
+      setShowCheckout(true);
+    } else if (paymentMethod === "UPI_MANUAL") {
+      setShowUpiFlow(true);
+    }
+  };
+
+  // If UPI flow is active, render UpiPaymentModal instead
+  if (showUpiFlow) {
+    return (
+      <UpiPaymentModal
+        selectedPlan={selectedPlan}
+        onClose={onClose}
+        onSubmitted={() => {
+          // Payment request submitted successfully — user will be notified on activation
+        }}
+      />
+    );
+  }
 
   const modalJSX = (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 100000 }}>
@@ -156,7 +180,7 @@ function UpgradeModal({ onClose, onUpgrade }) {
             </div>
 
             {/* Feature List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px', padding: '0 4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px', padding: '0 4px' }}>
               {features.map((feature, index) => (
                 <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ color: '#10b981', fontSize: '1.1rem', display: 'flex', flexShrink: 0 }}>
@@ -170,23 +194,133 @@ function UpgradeModal({ onClose, onUpgrade }) {
               ))}
             </div>
 
+            {/* Payment Method Selector */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                Choose Payment Method
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Instant Checkout (Razorpay) */}
+                <div
+                  onClick={() => setPaymentMethod("RAZORPAY")}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                    padding: '14px 16px',
+                    borderRadius: '12px',
+                    border: `2px solid ${paymentMethod === "RAZORPAY" ? '#7c3aed' : 'var(--border-light, rgba(255,255,255,0.08))'}`,
+                    background: paymentMethod === "RAZORPAY" ? 'rgba(124, 58, 237, 0.08)' : 'rgba(255,255,255,0.02)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{
+                    width: '36px', height: '36px',
+                    borderRadius: '10px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#3b82f6',
+                    flexShrink: 0
+                  }}>
+                    <FiCreditCard size={18} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginBottom: '2px' }}>
+                      Instant Checkout
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Card, UPI, Net Banking via Razorpay
+                    </div>
+                  </div>
+                  <div style={{
+                    width: '18px', height: '18px',
+                    borderRadius: '50%',
+                    border: `2px solid ${paymentMethod === "RAZORPAY" ? '#7c3aed' : 'var(--border-light, rgba(255,255,255,0.15))'}`,
+                    background: paymentMethod === "RAZORPAY" ? '#7c3aed' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    {paymentMethod === "RAZORPAY" && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />}
+                  </div>
+                </div>
+
+                {/* Manual UPI */}
+                <div
+                  onClick={() => setPaymentMethod("UPI_MANUAL")}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                    padding: '14px 16px',
+                    borderRadius: '12px',
+                    border: `2px solid ${paymentMethod === "UPI_MANUAL" ? '#7c3aed' : 'var(--border-light, rgba(255,255,255,0.08))'}`,
+                    background: paymentMethod === "UPI_MANUAL" ? 'rgba(124, 58, 237, 0.08)' : 'rgba(255,255,255,0.02)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{
+                    width: '36px', height: '36px',
+                    borderRadius: '10px',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#10b981',
+                    flexShrink: 0
+                  }}>
+                    <FiSmartphone size={18} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginBottom: '2px' }}>
+                      Pay via UPI Transfer
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      GPay, PhonePe, Paytm — manual verification
+                    </div>
+                  </div>
+                  <div style={{
+                    width: '18px', height: '18px',
+                    borderRadius: '50%',
+                    border: `2px solid ${paymentMethod === "UPI_MANUAL" ? '#7c3aed' : 'var(--border-light, rgba(255,255,255,0.15))'}`,
+                    background: paymentMethod === "UPI_MANUAL" ? '#7c3aed' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    {paymentMethod === "UPI_MANUAL" && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <button
-              onClick={() => setShowCheckout(true)}
+              onClick={handleContinue}
+              disabled={!paymentMethod}
               style={{
                 width: '100%',
                 padding: '15px',
                 borderRadius: '12px',
                 border: 'none',
-                background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                background: paymentMethod
+                  ? 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)'
+                  : 'rgba(124, 58, 237, 0.3)',
                 color: '#fff',
                 fontWeight: 700,
                 fontSize: '1rem',
-                cursor: 'pointer',
-                boxShadow: '0 10px 25px -5px rgba(124, 58, 237, 0.4)',
-                transition: 'var(--transition)'
+                cursor: paymentMethod ? 'pointer' : 'not-allowed',
+                boxShadow: paymentMethod ? '0 10px 25px -5px rgba(124, 58, 237, 0.4)' : 'none',
+                transition: 'var(--transition)',
+                opacity: paymentMethod ? 1 : 0.6
               }}
-              onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
-              onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+              onMouseOver={(e) => paymentMethod && (e.target.style.transform = 'translateY(-2px)')}
+              onMouseOut={(e) => paymentMethod && (e.target.style.transform = 'translateY(0)')}
             >
               Continue with {selectedPlan === "YEARLY" ? "Yearly Pro (₹999)" : "Monthly Pro (₹149)"}
             </button>
@@ -204,3 +338,4 @@ function UpgradeModal({ onClose, onUpgrade }) {
 }
 
 export default UpgradeModal;
+

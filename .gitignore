@@ -37,3 +37,6 @@ coverage/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Private runtime uploads
+backend/uploads/
