@@ -460,9 +460,9 @@ exports.approve = async (req, res) => {
     user.paymentId = deterministicPaymentId;
     await user.save(sessionOpt);
 
-    // 3. Create Audit Records (safely ignoring duplicate key errors from partial unique index)
+    // 3. Create Audit Records
     try {
-      await PaymentAudit.create({
+      const statusAudit = new PaymentAudit({
         paymentRequestId: paymentRequest._id,
         userId: paymentRequest.userId,
         action: "STATUS_CHANGED_APPROVED",
@@ -481,13 +481,14 @@ exports.approve = async (req, res) => {
           proExpiresAt: newProExpiresAt,
           paymentId: deterministicPaymentId
         }
-      }, sessionOpt);
+      });
+      await statusAudit.save(sessionOpt);
     } catch (auditErr) {
       if (auditErr.code !== 11000) throw auditErr;
     }
 
     try {
-      await PaymentAudit.create({
+      const proAudit = new PaymentAudit({
         paymentRequestId: paymentRequest._id,
         userId: paymentRequest.userId,
         action: "PRO_ENTITLEMENT_ACTIVATED",
@@ -504,10 +505,12 @@ exports.approve = async (req, res) => {
           proExpiresAt: newProExpiresAt,
           paymentId: deterministicPaymentId
         }
-      }, sessionOpt);
+      });
+      await proAudit.save(sessionOpt);
     } catch (auditErr) {
       if (auditErr.code !== 11000) throw auditErr;
     }
+
 
     if (session) {
       await session.commitTransaction();

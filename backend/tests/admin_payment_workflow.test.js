@@ -68,6 +68,8 @@ test("Step 5.3: Automated Admin Payment Review Workflow Suite", async (t) => {
   const origUserSave = User.prototype.save;
   const origAuditFind = PaymentAudit.find;
   const origAuditCreate = PaymentAudit.create;
+  const origAuditSave = PaymentAudit.prototype.save;
+  const origStartSession = mongoose.startSession;
 
   t.beforeEach(() => {
     currentMockUserId = adminId;
@@ -88,6 +90,8 @@ test("Step 5.3: Automated Admin Payment Review Workflow Suite", async (t) => {
     User.prototype.save = origUserSave;
     PaymentAudit.find = origAuditFind;
     PaymentAudit.create = origAuditCreate;
+    PaymentAudit.prototype.save = origAuditSave;
+    mongoose.startSession = origStartSession;
   });
 
   // =========================================================================
@@ -540,9 +544,11 @@ test("Step 5.3: Automated Admin Payment Review Workflow Suite", async (t) => {
     User.findById = async () => mockCustomer;
 
     let auditRecords = [];
-    PaymentAudit.create = async (records) => {
-      auditRecords.push(...(Array.isArray(records) ? records : [records]));
-      return records;
+    PaymentAudit.prototype.save = async function (opts) {
+      const validationErr = this.validateSync();
+      if (validationErr) throw validationErr;
+      auditRecords.push(this);
+      return this;
     };
 
     const res = await request(app)
@@ -562,7 +568,21 @@ test("Step 5.3: Automated Admin Payment Review Workflow Suite", async (t) => {
     const approvedAudit = auditRecords.find(a => a.action === "STATUS_CHANGED_APPROVED");
     const entitlementAudit = auditRecords.find(a => a.action === "PRO_ENTITLEMENT_ACTIVATED");
     assert.ok(approvedAudit, "STATUS_CHANGED_APPROVED audit must be created");
+    assert.equal(approvedAudit.paymentRequestId.toString(), reqId.toString());
+    assert.equal(approvedAudit.userId.toString(), customerId.toString());
+    assert.equal(approvedAudit.action, "STATUS_CHANGED_APPROVED");
+    assert.equal(approvedAudit.previousStatus, "UNDER_REVIEW");
+    assert.equal(approvedAudit.newStatus, "APPROVED");
+    assert.equal(approvedAudit.performedBy.toString(), adminId.toString());
+    assert.equal(approvedAudit.performedByRole, "ADMIN");
+
     assert.ok(entitlementAudit, "PRO_ENTITLEMENT_ACTIVATED audit must be created");
+    assert.equal(entitlementAudit.paymentRequestId.toString(), reqId.toString());
+    assert.equal(entitlementAudit.userId.toString(), customerId.toString());
+    assert.equal(entitlementAudit.action, "PRO_ENTITLEMENT_ACTIVATED");
+    assert.equal(entitlementAudit.newStatus, "APPROVED");
+    assert.equal(entitlementAudit.performedBy.toString(), adminId.toString());
+    assert.equal(entitlementAudit.performedByRole, "ADMIN");
   });
 
   await t.test("F2. approve: successfully approves NEEDS_MORE_INFO request", async () => {
@@ -1190,5 +1210,235 @@ test("Step 5.3: Automated Admin Payment Review Workflow Suite", async (t) => {
     assert.equal(res.body.paymentRequest.userId.password, undefined);
     assert.equal(res.body.paymentRequest.userId.token, undefined);
     assert.equal(res.body.paymentRequest.userId.clerkSecret, undefined);
+  });
+
+  // =========================================================================
+  // SECTION K: PaymentAudit Session & Transaction Regression Tests
+  // =========================================================================
+
+  await t.test("K1. Transaction session: passes session options correctly to PaymentAudit save without schema validation errors", async () => {
+    const reqId = new mongoose.Types.ObjectId();
+    const customerId = new mongoose.Types.ObjectId();
+
+    const mockRequest = {
+      _id: reqId,
+      userId: customerId,
+      plan: "MONTHLY",
+      amount: 14900,
+      currency: "INR",
+      paymentMethod: "UPI_MANUAL",
+      utr: "TXSESSION12345",
+      status: "UNDER_REVIEW",
+      save: async function (opt) {
+        assert.ok(opt && opt.session, "PaymentRequest.save must receive sessionOpt");
+        return this;
+      }
+    };
+
+    const mockCustomer = {
+      _id: customerId,
+      name: "Tx Customer",
+      email: "tx@test.com",
+      clerkId: "user_clerk_tx",
+      isPro: false,
+      proExpiresAt: null,
+      save: async function (opt) {
+        assert.ok(opt && opt.session, "User.save must receive sessionOpt");
+        return this;
+      }
+    };
+
+    PaymentRequest.findById = async () => mockRequest;
+    User.findById = async () => mockCustomer;
+
+    let transactionStarted = false;
+    let transactionCommitted = false;
+    let sessionEnded = false;
+
+    const mockSession = {
+      startTransaction: () => { transactionStarted = true; },
+      commitTransaction: async () => { transactionCommitted = true; },
+      abortTransaction: async () => {},
+      endSession: () => { sessionEnded = true; }
+    };
+
+    mongoose.startSession = async () => mockSession;
+
+    // Simulate readyState = 1 so session is created
+    const origReadyState = mongoose.connection.readyState;
+    Object.defineProperty(mongoose.connection, "readyState", { value: 1, configurable: true });
+
+    let capturedAudits = [];
+    PaymentAudit.prototype.save = async function (opt) {
+      assert.ok(opt && opt.session, "PaymentAudit.save must receive sessionOpt with session");
+      // Validate schema on actual instance - will throw if any required fields are missing
+      const validationErr = this.validateSync();
+      if (validationErr) throw validationErr;
+      capturedAudits.push(this);
+      return this;
+    };
+
+    try {
+      const res = await request(app)
+        .post(`/api/admin/payment-requests/${reqId}/approve`)
+        .send({ adminNote: "Verified with session" });
+
+      assert.equal(res.status, 200);
+      assert.equal(transactionStarted, true, "Transaction must be started");
+      assert.equal(transactionCommitted, true, "Transaction must be committed on success");
+      assert.equal(sessionEnded, true, "Session must be ended");
+      assert.equal(capturedAudits.length, 2, "Both status and pro audits must be saved");
+
+      const statusAudit = capturedAudits.find(a => a.action === "STATUS_CHANGED_APPROVED");
+      const proAudit = capturedAudits.find(a => a.action === "PRO_ENTITLEMENT_ACTIVATED");
+
+      assert.ok(statusAudit);
+      assert.equal(statusAudit.paymentRequestId.toString(), reqId.toString());
+      assert.equal(statusAudit.userId.toString(), customerId.toString());
+      assert.equal(statusAudit.performedByRole, "ADMIN");
+      assert.equal(statusAudit.previousStatus, "UNDER_REVIEW");
+      assert.equal(statusAudit.newStatus, "APPROVED");
+
+      assert.ok(proAudit);
+      assert.equal(proAudit.paymentRequestId.toString(), reqId.toString());
+      assert.equal(proAudit.userId.toString(), customerId.toString());
+      assert.equal(proAudit.performedByRole, "ADMIN");
+      assert.equal(proAudit.action, "PRO_ENTITLEMENT_ACTIVATED");
+    } finally {
+      Object.defineProperty(mongoose.connection, "readyState", { value: origReadyState, configurable: true });
+    }
+  });
+
+  await t.test("K2. Transaction rollback: aborts transaction and rolls back when audit write fails", async () => {
+    const reqId = new mongoose.Types.ObjectId();
+    const customerId = new mongoose.Types.ObjectId();
+
+    const mockRequest = {
+      _id: reqId,
+      userId: customerId,
+      plan: "MONTHLY",
+      amount: 14900,
+      currency: "INR",
+      paymentMethod: "UPI_MANUAL",
+      utr: "ROLLBACK12345",
+      status: "UNDER_REVIEW",
+      save: async function () { return this; }
+    };
+
+    const mockCustomer = {
+      _id: customerId,
+      name: "Rollback Customer",
+      email: "rollback@test.com",
+      clerkId: "user_clerk_rollback",
+      isPro: false,
+      proExpiresAt: null,
+      save: async function () { return this; }
+    };
+
+    PaymentRequest.findById = async () => mockRequest;
+    User.findById = async () => mockCustomer;
+
+    let transactionStarted = false;
+    let transactionAborted = false;
+    let transactionCommitted = false;
+    let sessionEnded = false;
+
+    const mockSession = {
+      startTransaction: () => { transactionStarted = true; },
+      commitTransaction: async () => { transactionCommitted = true; },
+      abortTransaction: async () => { transactionAborted = true; },
+      endSession: () => { sessionEnded = true; }
+    };
+
+    mongoose.startSession = async () => mockSession;
+
+    const origReadyState = mongoose.connection.readyState;
+    Object.defineProperty(mongoose.connection, "readyState", { value: 1, configurable: true });
+
+    // Simulate fatal database write failure on audit record
+    PaymentAudit.prototype.save = async function () {
+      const err = new Error("Database network partition during audit write");
+      err.code = "ECONNRESET";
+      throw err;
+    };
+
+    try {
+      const res = await request(app)
+        .post(`/api/admin/payment-requests/${reqId}/approve`)
+        .send({ adminNote: "Will fail on audit" });
+
+      assert.equal(res.status, 500);
+      assert.equal(res.body.code, "APPROVAL_ERROR");
+      assert.equal(transactionStarted, true);
+      assert.equal(transactionAborted, true, "Transaction must be aborted on audit failure");
+      assert.equal(transactionCommitted, false, "Transaction must NOT be committed");
+      assert.equal(sessionEnded, true);
+    } finally {
+      Object.defineProperty(mongoose.connection, "readyState", { value: origReadyState, configurable: true });
+    }
+  });
+
+  await t.test("K3. Duplicate audit idempotency: catches E11000 duplicate key error and commits transaction safely", async () => {
+    const reqId = new mongoose.Types.ObjectId();
+    const customerId = new mongoose.Types.ObjectId();
+
+    const mockRequest = {
+      _id: reqId,
+      userId: customerId,
+      plan: "MONTHLY",
+      amount: 14900,
+      currency: "INR",
+      paymentMethod: "UPI_MANUAL",
+      utr: "DUPAUDIT12345",
+      status: "UNDER_REVIEW",
+      save: async function () { return this; }
+    };
+
+    const mockCustomer = {
+      _id: customerId,
+      name: "Dup Customer",
+      email: "dupaudit@test.com",
+      clerkId: "user_clerk_dupaudit",
+      isPro: false,
+      proExpiresAt: null,
+      save: async function () { return this; }
+    };
+
+    PaymentRequest.findById = async () => mockRequest;
+    User.findById = async () => mockCustomer;
+
+    let transactionCommitted = false;
+    let transactionAborted = false;
+
+    const mockSession = {
+      startTransaction: () => {},
+      commitTransaction: async () => { transactionCommitted = true; },
+      abortTransaction: async () => { transactionAborted = true; },
+      endSession: () => {}
+    };
+
+    mongoose.startSession = async () => mockSession;
+
+    const origReadyState = mongoose.connection.readyState;
+    Object.defineProperty(mongoose.connection, "readyState", { value: 1, configurable: true });
+
+    // Simulate duplicate audit key (already existing from earlier attempt)
+    PaymentAudit.prototype.save = async function () {
+      const err = new Error("E11000 duplicate key error collection: paymentaudits index: paymentRequestId_1_action_1 dup key");
+      err.code = 11000;
+      throw err;
+    };
+
+    try {
+      const res = await request(app)
+        .post(`/api/admin/payment-requests/${reqId}/approve`)
+        .send({ adminNote: "Duplicate audit test" });
+
+      assert.equal(res.status, 200);
+      assert.equal(transactionCommitted, true, "Transaction must commit even when E11000 is ignored");
+      assert.equal(transactionAborted, false);
+    } finally {
+      Object.defineProperty(mongoose.connection, "readyState", { value: origReadyState, configurable: true });
+    }
   });
 });
