@@ -8,6 +8,7 @@ import { Toaster } from "react-hot-toast";
 import Layout from "./components/Layout";
 import AdminRoute from "./components/AdminRoute";
 import AdminLayout from "./components/admin/AdminLayout";
+import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 import AddExpense from "./pages/AddExpense";
 import AddIncome from "./pages/AddIncome";
@@ -162,6 +163,22 @@ function App() {
                   } 
                 />
 
+                {/* Public Landing Page */}
+                <Route
+                  path="/"
+                  element={
+                    <>
+                      <SignedIn>
+                        <Navigate to="/dashboard" replace />
+                      </SignedIn>
+                      <SignedOut>
+                        <LandingPage />
+                      </SignedOut>
+                    </>
+                  }
+                />
+                <Route path="/landing" element={<LandingPage />} />
+
                 {/* Normal User Protected routes */}
                 <Route
                   element={
@@ -175,7 +192,7 @@ function App() {
                     </>
                   }
                 >
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/expenses" element={<AddExpense />} />
                   <Route path="/income" element={<AddIncome />} />
                   <Route path="/budget" element={<Budget />} />

@@ -8,7 +8,7 @@ import { usePro } from "../context/ProContext";
 import { useAdmin } from "../context/AdminContext";
 
 const navItems = [
-  { path: "/", icon: <FiGrid />, label: "Dashboard" },
+  { path: "/dashboard", icon: <FiGrid />, label: "Dashboard" },
   { path: "/expenses", icon: <FiPlusCircle />, label: "Add Expense" },
   { path: "/income", icon: <FiTrendingUp />, label: "Add Income" },
   { path: "/budget", icon: <FiPieChart />, label: "Budget" },
@@ -59,7 +59,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
 
       {/* Logo */}
       <NavLink 
-        to="/"
+        to="/dashboard"
         className="sidebar-logo" 
         style={{ 
             fontSize: '1.5rem', 

@@ -5,6 +5,7 @@ import NotificationBell from "./NotificationBell";
 
 const pageData = {
   "/": { title: "Financial Overview", subtitle: "Your wealth at a glance" },
+  "/dashboard": { title: "Financial Overview", subtitle: "Your wealth at a glance" },
   "/expenses": { title: "Add Expense", subtitle: "Track your spending" },
   "/income": { title: "Add Income", subtitle: "Manage earnings" },
   "/budget": { title: "Budget", subtitle: "Set monthly limits" },
