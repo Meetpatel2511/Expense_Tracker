@@ -13,7 +13,8 @@ const {
   deleteExpense,
   updateExpense,
   getCategories,
-  addRecurringExpense
+  addRecurringExpense,
+  getRecurringExpenses
 } = require("../controllers/expenseController");
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -30,6 +31,7 @@ router.post("/add", authMiddleware, addExpense);
 router.get("/", authMiddleware, getExpenses);
 
 // Recurring Expenses
+router.get("/recurring", authMiddleware, getRecurringExpenses);
 router.post("/recurring/add", authMiddleware, addRecurringExpense);
 
 // Summary (income, expense, savings, balance)

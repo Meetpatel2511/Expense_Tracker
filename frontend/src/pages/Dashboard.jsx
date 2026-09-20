@@ -108,9 +108,12 @@ function Dashboard() {
       const startDate = new Date(Date.UTC(selectedYear, selectedMonth - 1, 1)).toISOString();
       const endDate = new Date(Date.UTC(selectedYear, selectedMonth, 0, 23, 59, 59, 999)).toISOString();
 
-      const [fullExpenses, fullIncomes] = await Promise.all([
+      const [fullExpenses, fullIncomes, healthScoreRes, recurringRes, familyRes] = await Promise.all([
         fetchAllPeriodTransactions(API, "/expense", startDate, endDate).catch(() => expenses || []),
-        fetchAllPeriodTransactions(API, "/income", startDate, endDate).catch(() => [])
+        fetchAllPeriodTransactions(API, "/income", startDate, endDate).catch(() => []),
+        API.get("/user/health-score").then(r => r.data).catch(() => null),
+        API.get("/expense/recurring").then(r => r.data).catch(() => []),
+        API.get("/family/stats").then(r => r.data).catch(() => null)
       ]);
 
       generateFinancialReportPDF({
@@ -123,12 +126,16 @@ function Dashboard() {
         budgets: budget,
         monthlyData,
         alerts: isProActive ? alerts : [],
+        healthScore: healthScoreRes,
+        recurringExpenses: Array.isArray(recurringRes) ? recurringRes : [],
+        familyData: familyRes,
         userName: user?.fullName || user?.firstName || ""
       });
     } catch (pdfError) {
       console.error("PDF Final Error:", pdfError);
       alert("❌ PDF Generation Issue.\n\nPlease check your data and try again.");
     }
+
   };
 
   const handleExportExcel = async () => {

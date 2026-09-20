@@ -732,6 +732,17 @@ exports.addRecurringExpense = async (req, res) => {
   }
 };
 
+// GET RECURRING EXPENSES (Authenticated read-only)
+exports.getRecurringExpenses = async (req, res) => {
+  try {
+    const recurring = await RecurringExpense.find({ user: req.user }).sort({ nextDate: 1 });
+    res.json(recurring);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
 // DELETE EXPENSE (with ownership check)
 exports.deleteExpense = async (req, res) => {
   try {

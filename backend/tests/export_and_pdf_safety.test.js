@@ -318,8 +318,86 @@ describe("Step 1E: Production Export Sanitization & PDF Safety Suite", () => {
       assert.ok(doc, "Expected valid jsPDF instance");
 
       const pageCount = doc.internal.getNumberOfPages();
-      // With 125 incomes and 125 expenses, itemized transactions naturally span multiple pages (>= 8 pages)
-      assert.ok(pageCount >= 8, `Expected naturally paginated multi-page document (>= 8 pages), got ${pageCount}`);
+      // With 125 incomes and 125 expenses, itemized transactions naturally span multiple pages (>= 14 pages total in 11-page layout)
+      assert.ok(pageCount >= 14, `Expected naturally paginated multi-page document (>= 14 pages), got ${pageCount}`);
+    });
+
+    it("should generate exact 11-page base structure for normal complete dataset", () => {
+      const normalData = {
+        month: 3,
+        year: 2026,
+        summary: { totalIncome: 85000, totalExpense: 42000, balance: 143000, incomeChange: 8.2, expenseChange: 2.1 },
+        categories: {
+          "Food & Dining": 15000,
+          "Shopping": 10000,
+          "Transport": 8000,
+          "Bills & Utilities": 5000,
+          "Entertainment": 4000
+        },
+        incomes: [
+          { date: "2026-03-01", source: "Monthly Salary", amount: 75000 },
+          { date: "2026-03-15", source: "Freelance", amount: 10000 }
+        ],
+        expenses: [
+          { date: "2026-03-05", note: "Grocery Store", category: "Food & Dining", amount: 8200 },
+          { date: "2026-03-12", note: "Electric Utility", category: "Bills & Utilities", amount: 1200 },
+          { date: "2026-03-15", note: "Electronics Store", category: "Shopping", amount: 4500 }
+        ],
+        budgets: {
+          categories: [
+            { category: "Food & Dining", budget: 10000 },
+            { category: "Shopping", budget: 8000 },
+            { category: "Transport", budget: 5000 }
+          ]
+        },
+        monthlyData: [
+          { month: "Jan 2026", income: 80000, expense: 40000 },
+          { month: "Feb 2026", income: 82000, expense: 41000 },
+          { month: "Mar 2026", income: 85000, expense: 42000 }
+        ],
+        healthScore: { score: 88, status: "Strong Position", tips: ["Your spending remained within your income during the selected period."] },
+        recurringExpenses: [
+          { note: "Apartment Rent", category: "Housing", amount: 20000, frequency: "Monthly", nextDate: "2026-04-01" },
+          { note: "Fiber Internet", category: "Utilities", amount: 999, frequency: "Monthly", nextDate: "2026-04-05" }
+        ],
+        familyData: {
+          hasFamily: true,
+          familyName: "Household Workspace",
+          totalFamilyExpense: 36000,
+          members: [
+            { name: "Primary Member", total: 22000, percentage: 61.1 },
+            { name: "Secondary Member", total: 14000, percentage: 38.9 }
+          ]
+        },
+        userName: "FinTrack Executive",
+        saveDoc: false
+      };
+
+      const doc = generateFinancialReportPDF(normalData);
+      assert.ok(doc, "Expected valid jsPDF document");
+      assert.equal(doc.internal.getNumberOfPages(), 11, "Standard report should have exactly 11 pages");
+    });
+
+    it("should handle edge cases: no family, no budgets, no recurring without failing", () => {
+      const edgeCaseData = {
+        month: 3,
+        year: 2026,
+        summary: { totalIncome: 50000, totalExpense: 20000, balance: 30000 },
+        categories: { "General": 20000 },
+        incomes: [{ date: "2026-03-01", source: "Salary", amount: 50000 }],
+        expenses: [{ date: "2026-03-05", note: "Expense", category: "General", amount: 20000 }],
+        budgets: { categories: [] },
+        monthlyData: [],
+        healthScore: null,
+        recurringExpenses: [],
+        familyData: null,
+        userName: "Single User",
+        saveDoc: false
+      };
+
+      const doc = generateFinancialReportPDF(edgeCaseData);
+      assert.ok(doc, "Expected valid jsPDF document for edge case");
+      assert.equal(doc.internal.getNumberOfPages(), 11, "Edge-case report should maintain 11-page structure");
     });
   });
 
@@ -372,3 +450,4 @@ describe("Step 1E: Production Export Sanitization & PDF Safety Suite", () => {
     });
   });
 });
+
