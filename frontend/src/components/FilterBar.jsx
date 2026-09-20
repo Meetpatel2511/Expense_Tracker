@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FiSearch, FiFilter, FiX } from "react-icons/fi";
+import { FiSearch, FiFilter, FiX, FiCalendar } from "react-icons/fi";
 
 function FilterBar({ onFilterChange, categories = [], showCategory = true }) {
   const [search, setSearch] = useState("");
@@ -20,71 +20,79 @@ function FilterBar({ onFilterChange, categories = [], showCategory = true }) {
     onFilterChange({ search: "", category: "", startDate: "", endDate: "" });
   };
 
+  const hasActiveFilters = Boolean(search || category || startDate || endDate);
+
   return (
-    <div className="card" style={{ marginBottom: "24px", padding: "16px" }}>
-      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
-        {/* Search */}
-        <div style={{ flex: 1, minWidth: "200px", position: "relative" }}>
-          <FiSearch style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-tertiary)" }} />
+    <div className="card" style={{ marginBottom: "20px", padding: "16px 18px" }}>
+      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+        {/* Search Input */}
+        <div style={{ flex: 1, minWidth: "220px", position: "relative" }}>
+          <FiSearch style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", fontSize: "1rem" }} />
           <input 
             type="text" 
-            placeholder="Search by note..." 
+            placeholder="Search by note or description..." 
             className="form-input" 
-            style={{ paddingLeft: "36px", margin: 0 }}
+            style={{ paddingLeft: "40px", margin: 0 }}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleApply()}
           />
         </div>
 
-        {/* Buttons */}
-        <div style={{ display: "flex", gap: "8px" }}>
+        {/* Action Controls */}
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <button 
+            type="button"
             className="btn-secondary" 
-            style={{ padding: "10px 16px", borderRadius: "10px", fontSize: "0.85rem" }}
+            style={{ padding: "10px 16px", fontSize: "0.85rem" }}
             onClick={() => setIsExpanded(!isExpanded)}
           >
-            <FiFilter style={{ marginRight: "8px" }} />
-            {isExpanded ? "Hide Filters" : "More Filters"}
+            <FiFilter size={14} />
+            <span>{isExpanded ? "Hide Filters" : "Filter Options"}</span>
           </button>
+          
           <button 
+            type="button"
             className="btn-primary" 
-            style={{ padding: "10px 16px", borderRadius: "10px", fontSize: "0.85rem" }}
+            style={{ padding: "10px 18px", fontSize: "0.85rem", width: "auto" }}
             onClick={handleApply}
           >
             Apply
           </button>
-          {(search || category || startDate || endDate) && (
+
+          {hasActiveFilters && (
             <button 
-                className="btn-icon" 
-                style={{ background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)" }}
-                onClick={handleReset}
-                title="Clear all filters"
+              type="button"
+              className="btn-icon" 
+              style={{ background: "var(--accent-danger-light)", color: "var(--accent-danger)", borderColor: "rgba(239, 68, 68, 0.25)" }}
+              onClick={handleReset}
+              title="Clear all filters"
+              aria-label="Clear all filters"
             >
-                <FiX />
+              <FiX size={16} />
             </button>
           )}
         </div>
       </div>
 
-      {/* Expanded Filters */}
+      {/* Expanded Filter Panel */}
       {isExpanded && (
         <div className="animate-fade" style={{ 
           marginTop: "16px", 
           paddingTop: "16px", 
           borderTop: "1px solid var(--border-light)",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-          gap: "16px"
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gap: "14px"
         }}>
           {showCategory && (
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" style={{ fontSize: "0.75rem" }}>Category</label>
+              <label className="form-label" style={{ fontSize: "0.72rem" }}>Category</label>
               <select 
                 className="form-input" 
                 value={category} 
                 onChange={(e) => setCategory(e.target.value)}
-                style={{ fontSize: "0.85rem" }}
+                style={{ fontSize: "0.875rem", padding: "10px 12px" }}
               >
                 <option value="">All Categories</option>
                 {categories.map(cat => (
@@ -95,24 +103,24 @@ function FilterBar({ onFilterChange, categories = [], showCategory = true }) {
           )}
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: "0.75rem" }}>Start Date</label>
+            <label className="form-label" style={{ fontSize: "0.72rem" }}>Start Date</label>
             <input 
               type="date" 
               className="form-input" 
               value={startDate} 
               onChange={(e) => setStartDate(e.target.value)}
-              style={{ fontSize: "0.85rem" }}
+              style={{ fontSize: "0.875rem", padding: "10px 12px" }}
             />
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: "0.75rem" }}>End Date</label>
+            <label className="form-label" style={{ fontSize: "0.72rem" }}>End Date</label>
             <input 
               type="date" 
               className="form-input" 
               value={endDate} 
               onChange={(e) => setEndDate(e.target.value)}
-              style={{ fontSize: "0.85rem" }}
+              style={{ fontSize: "0.875rem", padding: "10px 12px" }}
             />
           </div>
         </div>

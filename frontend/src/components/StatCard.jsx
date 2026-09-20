@@ -1,39 +1,58 @@
 import React from "react";
-import { FiTrendingUp, FiTrendingDown, FiPieChart, FiDollarSign } from "react-icons/fi";
+import { FiTrendingUp, FiTrendingDown } from "react-icons/fi";
 
-function StatCard({ title, value, subtext, icon, trend, color }) {
-  // Safely check trend whether it is a number or a string.
+function StatCard({ title, value, subtext, icon, trend, color = "var(--bg-accent)" }) {
   const isPositive = typeof trend === 'number' ? trend > 0 : trend?.toString().startsWith('+');
 
   return (
-    <div className="card" style={{ 
-      flex: 1, 
-      display: 'flex', 
-      flexDirection: 'column', 
-      gap: '16px', // Standardized gap
-      position: 'relative',
-      overflow: 'hidden',
-      padding: '24px', // Explicit standard padding
-      background: 'rgba(21, 25, 33, 0.7)',
-      backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(255, 255, 255, 0.05)'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-        <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '1px' }}>{title}</div>
-        <div style={{ fontSize: '1.25rem', color: color || 'var(--bg-accent)', display: 'flex', alignItems: 'center' }}>{icon}</div>
+    <div 
+      className="card" 
+      style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '14px',
+        padding: '22px 20px',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.6px' }}>
+          {title}
+        </div>
+        <div style={{ 
+          width: '36px', 
+          height: '36px', 
+          borderRadius: '10px', 
+          background: `${color}18`, 
+          color: color, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          fontSize: '1.2rem',
+          flexShrink: 0
+        }}>
+          {icon}
+        </div>
       </div>
       
-      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff' }}>₹{value.toLocaleString()}</div>
+      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>
+        ₹{Number(value || 0).toLocaleString()}
+      </div>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
         {trend ? (
-          <span style={{ color: isPositive ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {isPositive ? <FiTrendingUp fontSize="0.9rem" /> : <FiTrendingDown fontSize="0.9rem" />}
+          <span 
+            className={`badge ${isPositive ? "badge-success" : "badge-danger"}`}
+            style={{ padding: '2px 8px', fontSize: '0.72rem' }}
+          >
+            {isPositive ? <FiTrendingUp size={12} /> : <FiTrendingDown size={12} />}
             {trend}
           </span>
         ) : (
-          <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-             {subtext}
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            {subtext}
           </span>
         )}
       </div>

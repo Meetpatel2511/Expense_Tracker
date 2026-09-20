@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useUser } from "@clerk/clerk-react";
 import { NavLink } from "react-router-dom";
-import { FiGrid, FiPlusCircle, FiPieChart, FiUsers, FiTrendingUp, FiHelpCircle, FiX, FiShield } from "react-icons/fi";
+import { FiGrid, FiPlusCircle, FiPieChart, FiUsers, FiTrendingUp, FiHelpCircle, FiX, FiShield, FiStar } from "react-icons/fi";
 import UpgradeModal from "./UpgradeModal";
 import API from "../utils/api";
 import { usePro } from "../context/ProContext";
@@ -42,19 +42,25 @@ function Sidebar({ isOpen, toggleSidebar }) {
       <button 
         className="mobile-only" 
         onClick={toggleSidebar}
+        aria-label="Close Sidebar"
         style={{ 
           position: 'absolute', 
-          top: '24px', 
+          top: '20px', 
           right: '16px', 
-          background: 'none', 
-          border: 'none', 
+          background: 'rgba(255, 255, 255, 0.05)', 
+          border: '1px solid var(--border-color)', 
+          borderRadius: '8px',
           color: 'var(--text-secondary)',
           display: 'none',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '32px',
+          height: '32px',
           cursor: 'pointer',
           zIndex: 1001
         }}
       >
-        <FiX size={24} />
+        <FiX size={18} />
       </button>
 
       {/* Logo */}
@@ -62,42 +68,62 @@ function Sidebar({ isOpen, toggleSidebar }) {
         to="/dashboard"
         className="sidebar-logo" 
         style={{ 
-            fontSize: '1.5rem', 
-            textDecoration: 'none', 
-            fontWeight: 800, 
-            color: 'var(--bg-accent)', 
-            marginBottom: '40px', 
-            display: 'block' 
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          textDecoration: 'none', 
+          marginBottom: '32px', 
+          padding: '0 4px'
         }}
       >
-        FinTrack
+        <div style={{
+          width: '36px',
+          height: '36px',
+          borderRadius: '10px',
+          background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          fontWeight: 800,
+          fontSize: '1.2rem',
+          boxShadow: '0 4px 14px rgba(124, 58, 237, 0.4)'
+        }}>
+          F
+        </div>
+        <div>
+          <span style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>
+            Fin<span style={{ color: 'var(--bg-accent)' }}>Track</span>
+          </span>
+        </div>
       </NavLink>
 
-      {/* User Profile Section - Integrated with NavLink and Hover System */}
+      {/* User Profile Section */}
       <NavLink 
         to="/profile" 
         className="sidebar-user" 
-        style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px' }}
+        style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}
       >
-        <div className="sidebar-user-avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+        <div className="sidebar-user-avatar" style={{ width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
           <img src={user?.imageUrl} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
-        <div style={{ overflow: 'hidden' }}>
-          <div style={{ fontSize: '0.9rem', fontWeight: 700, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>Hi, {user?.firstName || "User"} 👋</div>
-          <div 
-            style={{ 
-              fontSize: '0.75rem', 
-              color: isPro ? '#a78bfa' : 'var(--text-muted)', 
-              fontWeight: isPro ? 700 : 500
-            }}
-          >
-             {isPro ? "Pro Member 💎" : "Regular Member"}
+        <div style={{ overflow: 'hidden', flex: 1 }}>
+          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+            Hi, {user?.firstName || "User"} 👋
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+            <span 
+              className={`badge ${isPro ? "badge-pro" : "badge-neutral"}`}
+              style={{ fontSize: '0.65rem', padding: '2px 8px' }}
+            >
+              {isPro ? "Pro Member 💎" : "Free Member"}
+            </span>
           </div>
         </div>
       </NavLink>
 
       {/* Navigation */}
-      <nav style={{ flex: 1, overflowY: 'auto' }}>
+      <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {navItems.map((item) => (
           <NavLink
             key={item.path}
@@ -106,20 +132,20 @@ function Sidebar({ isOpen, toggleSidebar }) {
             style={({ isActive }) => ({
               display: 'flex',
               alignItems: 'center',
-              gap: '16px',
-              padding: '12px 16px',
+              gap: '14px',
+              padding: '11px 14px',
               borderRadius: '12px',
-              marginBottom: '8px',
               cursor: 'pointer',
               textDecoration: 'none',
               transition: 'var(--transition)',
               backgroundColor: isActive ? 'rgba(124, 58, 237, 0.15)' : 'transparent',
-              color: isActive ? 'var(--bg-accent)' : 'var(--text-secondary)',
-              fontWeight: isActive ? 600 : 500
+              color: isActive ? '#c4b5fd' : 'var(--text-secondary)',
+              fontWeight: isActive ? 700 : 500,
+              border: isActive ? '1px solid rgba(124, 58, 237, 0.3)' : '1px solid transparent'
             })}
           >
-            <div style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', flexShrink: 0 }}>{item.icon}</div>
-            <div style={{ fontSize: '0.95rem' }}>{item.label}</div>
+            <div style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', flexShrink: 0 }}>{item.icon}</div>
+            <div style={{ fontSize: '0.9rem' }}>{item.label}</div>
           </NavLink>
         ))}
 
@@ -130,34 +156,25 @@ function Sidebar({ isOpen, toggleSidebar }) {
             style={({ isActive }) => ({
               display: 'flex',
               alignItems: 'center',
-              gap: '16px',
-              padding: '12px 16px',
+              gap: '14px',
+              padding: '11px 14px',
               borderRadius: '12px',
-              marginBottom: '8px',
+              marginTop: '4px',
               cursor: 'pointer',
               textDecoration: 'none',
               transition: 'var(--transition)',
-              backgroundColor: isActive ? 'rgba(124, 58, 237, 0.15)' : 'transparent',
-              color: isActive ? 'var(--bg-accent)' : 'var(--text-secondary)',
-              fontWeight: isActive ? 600 : 500
+              backgroundColor: isActive ? 'rgba(124, 58, 237, 0.18)' : 'rgba(255, 255, 255, 0.02)',
+              color: isActive ? '#c4b5fd' : 'var(--text-secondary)',
+              fontWeight: isActive ? 700 : 500,
+              border: '1px solid rgba(124, 58, 237, 0.25)'
             })}
           >
-            <div style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', flexShrink: 0, color: 'var(--bg-accent)' }}>
+            <div style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', flexShrink: 0, color: 'var(--bg-accent)' }}>
               <FiShield />
             </div>
-            <div style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
               <span>Admin Portal</span>
-              <span
-                style={{
-                  fontSize: '0.65rem',
-                  padding: '2px 6px',
-                  borderRadius: '6px',
-                  background: 'rgba(124, 58, 237, 0.2)',
-                  color: '#a78bfa',
-                  fontWeight: 700,
-                  textTransform: 'uppercase'
-                }}
-              >
+              <span className="badge badge-pro" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
                 Admin
               </span>
             </div>
@@ -167,32 +184,29 @@ function Sidebar({ isOpen, toggleSidebar }) {
 
       {/* Upgrade Card (Hide if already Pro) */}
       {!isPro && (
-        <div className="upgrade-card" style={{ 
-            background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)', 
-            borderRadius: '16px', 
-            padding: '20px', 
-            marginBottom: '24px',
-            position: 'relative'
+        <div style={{ 
+          background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%)', 
+          border: '1px solid rgba(124, 58, 237, 0.35)',
+          borderRadius: '16px', 
+          padding: '18px 16px', 
+          marginBottom: '20px',
+          position: 'relative'
         }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px', color: '#fff' }}>Upgrade to Pro</div>
-          <p style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.85)', marginBottom: '16px', lineHeight: '1.4' }}>
-            Unlock AI insights and professional reports.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <span style={{ color: '#fbbf24', fontSize: '1rem', display: 'flex' }}><FiStar /></span>
+            <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff', letterSpacing: '0.5px' }}>
+              FinTrack Pro
+            </div>
+          </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: '1.45' }}>
+            Unlock Smart Alerts, unlimited family members & executive PDF reports.
           </p>
           <button 
             onClick={() => setShowModal(true)}
-            style={{ 
-              width: '100%', 
-              padding: '10px', 
-              borderRadius: '10px', 
-              border: 'none', 
-              background: 'rgba(255, 255, 255, 0.2)', 
-              color: '#fff', 
-              fontWeight: 600, 
-              fontSize: '0.85rem',
-              cursor: 'pointer'
-            }}
+            className="upgrade-btn-small"
+            style={{ width: '100%', justifyContent: 'center' }}
           >
-            Get Started
+            Upgrade Plan
           </button>
         </div>
       )}
@@ -200,10 +214,23 @@ function Sidebar({ isOpen, toggleSidebar }) {
       {/* Help Center */}
       <NavLink 
         to="/help"
-        style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', gap: '16px', padding: '0 16px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.95rem', flexShrink: 0 }}
+        style={({ isActive }) => ({
+          display: 'flex', 
+          alignItems: 'center', 
+          textDecoration: 'none', 
+          gap: '12px', 
+          padding: '10px 14px', 
+          color: isActive ? '#c4b5fd' : 'var(--text-secondary)', 
+          cursor: 'pointer', 
+          fontSize: '0.9rem',
+          fontWeight: isActive ? 700 : 500,
+          borderRadius: '10px',
+          background: isActive ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
+          flexShrink: 0 
+        })}
       >
-        <FiHelpCircle style={{ fontSize: '1.2rem', flexShrink: 0 }} />
-        <span>Help Center</span>
+        <FiHelpCircle style={{ fontSize: '1.15rem', flexShrink: 0 }} />
+        <span>Help & Support</span>
       </NavLink>
 
       {/* Render Modal */}
@@ -216,8 +243,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
 
       <style>{`
         @media (max-width: 1024px) {
-          .mobile-only { display: block !important; }
-          .sidebar-logo { margin-bottom: 24px !important; }
+          .mobile-only { display: flex !important; }
         }
       `}</style>
     </aside>

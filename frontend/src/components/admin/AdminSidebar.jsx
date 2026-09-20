@@ -14,10 +14,10 @@ import { useAdmin } from "../../context/AdminContext";
 
 const adminNavItems = [
   { path: "/admin", icon: <FiGrid />, label: "Dashboard", end: true },
-  { path: "/admin/payments", icon: <FiCreditCard />, label: "Payments", end: false },
+  { path: "/admin/payments", icon: <FiCreditCard />, label: "Payments Queue", end: false },
   { path: "/admin/subscriptions", icon: <FiAward />, label: "Subscriptions", end: false },
   { path: "/admin/users", icon: <FiUsers />, label: "Users Directory", end: false },
-  { path: "/admin/analytics", icon: <FiTrendingUp />, label: "Analytics", end: false },
+  { path: "/admin/analytics", icon: <FiTrendingUp />, label: "Analytics & MRR", end: false },
 ];
 
 function AdminSidebar({ isOpen, toggleSidebar }) {
@@ -29,65 +29,71 @@ function AdminSidebar({ isOpen, toggleSidebar }) {
       <button
         className="mobile-only"
         onClick={toggleSidebar}
+        aria-label="Close Admin Sidebar"
         style={{
           position: "absolute",
-          top: "24px",
+          top: "20px",
           right: "16px",
-          background: "none",
-          border: "none",
+          background: "rgba(255, 255, 255, 0.05)",
+          border: "1px solid var(--border-color)",
+          borderRadius: "8px",
           color: "var(--text-secondary)",
           display: "none",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "32px",
+          height: "32px",
           cursor: "pointer",
           zIndex: 1001
         }}
       >
-        <FiX size={24} />
+        <FiX size={18} />
       </button>
 
       {/* Admin Branding */}
-      <div style={{ marginBottom: "32px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+      <div style={{ marginBottom: "28px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+          <div style={{
+            width: '34px',
+            height: '34px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: '1.1rem',
+            boxShadow: '0 4px 12px rgba(124, 58, 237, 0.4)'
+          }}>
+            F
+          </div>
           <NavLink
             to="/admin"
             style={{
-              fontSize: "1.4rem",
+              fontSize: "1.3rem",
               textDecoration: "none",
               fontWeight: 800,
               color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
+              letterSpacing: "-0.3px"
             }}
           >
-            FinTrack
+            Fin<span style={{ color: "var(--bg-accent)" }}>Track</span>
           </NavLink>
         </div>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "4px 10px",
-            borderRadius: "20px",
-            background: "rgba(124, 58, 237, 0.18)",
-            border: "1px solid rgba(124, 58, 237, 0.35)",
-            color: "#c4b5fd",
-            fontSize: "0.72rem",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.6px"
-          }}
-        >
-          <FiShield style={{ color: "#a78bfa" }} /> Admin Portal
+        <div style={{ paddingLeft: "4px" }}>
+          <span className="badge badge-pro" style={{ fontSize: "0.7rem", padding: "3px 8px" }}>
+            <FiShield size={12} /> Admin Portal
+          </span>
         </div>
       </div>
 
       {/* Admin Profile Pill */}
       <div
         style={{
-          padding: "12px 14px",
-          borderRadius: "14px",
-          background: "rgba(255, 255, 255, 0.03)",
+          padding: "10px 12px",
+          borderRadius: "12px",
+          background: "rgba(255, 255, 255, 0.02)",
           border: "1px solid var(--border-color)",
           marginBottom: "24px",
           display: "flex",
@@ -123,8 +129,8 @@ function AdminSidebar({ isOpen, toggleSidebar }) {
       </div>
 
       {/* Navigation */}
-      <nav style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
-        <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.8px", paddingLeft: "12px", marginBottom: "4px" }}>
+      <nav style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "4px" }}>
+        <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.8px", paddingLeft: "12px", marginBottom: "6px" }}>
           Platform Management
         </div>
 
@@ -144,7 +150,7 @@ function AdminSidebar({ isOpen, toggleSidebar }) {
               textDecoration: "none",
               transition: "var(--transition)",
               backgroundColor: isActive ? "rgba(124, 58, 237, 0.18)" : "transparent",
-              color: isActive ? "var(--bg-accent)" : "var(--text-secondary)",
+              color: isActive ? "#c4b5fd" : "var(--text-secondary)",
               fontWeight: isActive ? 700 : 500,
               border: isActive ? "1px solid rgba(124, 58, 237, 0.3)" : "1px solid transparent"
             })}
@@ -160,34 +166,40 @@ function AdminSidebar({ isOpen, toggleSidebar }) {
       {/* Return to Normal App */}
       <div style={{ paddingTop: "16px", borderTop: "1px solid var(--border-color)", marginTop: "auto" }}>
         <NavLink
-          to="/"
+          to="/dashboard"
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "12px",
-            padding: "12px 16px",
+            gap: "10px",
+            padding: "11px 14px",
             borderRadius: "12px",
-            background: "rgba(255, 255, 255, 0.04)",
+            background: "rgba(255, 255, 255, 0.03)",
             border: "1px solid var(--border-color)",
-            color: "#e2e8f0",
+            color: "var(--text-secondary)",
             textDecoration: "none",
             fontSize: "0.85rem",
             fontWeight: 600,
-            transition: "all 0.2s ease"
+            transition: "var(--transition)"
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
+            e.currentTarget.style.background = "rgba(255, 255, 255, 0.06)";
             e.currentTarget.style.color = "#fff";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
-            e.currentTarget.style.color = "#e2e8f0";
+            e.currentTarget.style.background = "rgba(255, 255, 255, 0.03)";
+            e.currentTarget.style.color = "var(--text-secondary)";
           }}
         >
-          <FiArrowLeft style={{ fontSize: "1.1rem", color: "var(--text-muted)" }} />
-          <span>Back to FinTrack</span>
+          <FiArrowLeft style={{ fontSize: "1.05rem" }} />
+          <span>Back to User App</span>
         </NavLink>
       </div>
+
+      <style>{`
+        @media (max-width: 1024px) {
+          .mobile-only { display: flex !important; }
+        }
+      `}</style>
     </aside>
   );
 }

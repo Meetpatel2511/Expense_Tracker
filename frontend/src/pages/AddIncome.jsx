@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import API from "../utils/api";
 import FilterBar from "../components/FilterBar";
 import Pagination from "../components/Pagination";
-import PieChartCard from "../components/PieChartCard";
+import PageHeader from "../components/PageHeader";
+import EmptyState from "../components/EmptyState";
 import { FiPlus, FiTrash2, FiEdit2, FiTrendingUp, FiDownload, FiDollarSign, FiFileText } from "react-icons/fi";
 import toast from "react-hot-toast";
 import jsPDF from "jspdf";
@@ -14,6 +15,16 @@ const SOURCES = [
   "Salary", "Freelance", "Business", "Investment",
   "Gift", "Rental", "Other"
 ];
+
+const SOURCE_ICONS = {
+  "Salary": "💼",
+  "Freelance": "💻",
+  "Business": "🏢",
+  "Investment": "📈",
+  "Gift": "🎁",
+  "Rental": "🏠",
+  "Other": "💰"
+};
 
 function AddIncome() {
   const [amount, setAmount] = useState("");
@@ -119,15 +130,34 @@ function AddIncome() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this income?")) {
-      try {
-        await API.delete(`/income/${id}`);
-        fetchIncomes();
-        toast.success("Income deleted");
-      } catch (err) {
-        toast.error("Failed to delete");
-      }
-    }
+    toast((t) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '240px' }}>
+        <div style={{ flex: 1, fontSize: '0.85rem', fontWeight: 600 }}>Delete this income deposit?</div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            onClick={async () => {
+              toast.dismiss(t.id);
+              try {
+                await API.delete(`/income/${id}`);
+                fetchIncomes();
+                toast.success("Income deleted");
+              } catch (err) {
+                toast.error("Failed to delete");
+              }
+            }}
+            style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: 'var(--accent-danger)', color: '#fff', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Delete
+          </button>
+          <button 
+            onClick={() => toast.dismiss(t.id)}
+            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.05)', color: '#fff', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ), { duration: 5000, position: "top-center" });
   };
 
   const handleExportCSV = () => {
@@ -157,7 +187,7 @@ function AddIncome() {
     try {
       const doc = new jsPDF();
       doc.setFontSize(22);
-      doc.setTextColor(124, 58, 237);
+      doc.setTextColor(16, 185, 129);
       doc.text("FinTrack Income Report", 14, 20);
 
       doc.setFontSize(10);
@@ -173,11 +203,11 @@ function AddIncome() {
           inc.source || "Other",
           `Rs. ${(inc.amount || 0).toLocaleString()}`
         ]),
-        headStyles: { fillColor: [124, 58, 237] },
+        headStyles: { fillColor: [16, 185, 129] },
         theme: 'grid'
       });
 
-      doc.save(`FinTrack_Incomes_${new Date().toLocaleDateString()}.pdf`);
+      doc.save(`FinTrack_Income_${new Date().toLocaleDateString()}.pdf`);
       toast.success("PDF exported successfully!");
     } catch (err) {
       console.error("PDF Export Error:", err);
@@ -185,179 +215,182 @@ function AddIncome() {
     }
   };
 
-  // 📊 Calculate Chart Data
-  const incomeSourceData = incomes.reduce((acc, inc) => {
-    acc[inc.source] = (acc[inc.source] || 0) + inc.amount;
-    return acc;
-  }, {});
-
-  const totalIncome = Object.values(incomeSourceData).reduce((sum, val) => sum + val, 0);
-
   return (
-    <div className="animate-fade page-grid">
-      
-        {/* Left Column: Form (40%) */}
-        <div className="income-form-section">
-          <div className="card form-card" style={{ width: '100%' }}>
-            <div className="card-header">
-              <div>
-                <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <FiDollarSign style={{ color: 'var(--bg-accent)', fontSize: '1.2rem' }} /> 
-                  {editingId ? "Update Record" : "Add Income Source"}
-                </div>
-              </div>
+    <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <PageHeader 
+        title="Income Streams" 
+        subtitle="Manage regular salary, freelancing, dividends, and other earnings"
+      >
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            type="button"
+            onClick={handleExportCSV}
+            className="btn-secondary" 
+            style={{ fontSize: '0.85rem' }}
+          >
+            <FiDownload size={14} /> 
+            <span>CSV Export</span>
+          </button>
+          <button 
+            type="button"
+            onClick={exportToPDF}
+            className="btn-secondary" 
+            style={{ fontSize: '0.85rem', opacity: isPro ? 1 : 0.85 }}
+            title={isPro ? "Export PDF Statement" : "Pro Feature - Upgrade to Export"}
+          >
+            <FiFileText size={14} /> 
+            <span>PDF Statement</span>
+          </button>
+        </div>
+      </PageHeader>
+
+      <div className="page-grid">
+        {/* Form Card */}
+        <div className="card form-card">
+          <div className="card-header" style={{ marginBottom: '18px' }}>
+            <div>
+              <h3 className="card-title">{editingId ? "Update Income" : "New Income Deposit"}</h3>
+              <p className="card-subtitle">{editingId ? "Modify income stream details" : "Record your earnings or deposits"}</p>
             </div>
+            {editingId && (
+              <span className="badge badge-warning">Editing</span>
+            )}
+          </div>
 
-            <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit}>
+            <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Amount (₹)</label>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <FiTrendingUp style={{ position: 'absolute', left: '16px', color: '#10b981' }} />
-                    <input
-                        type="number"
-                        className="form-input"
-                        placeholder="0.00"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        style={{ paddingLeft: '40px' }}
-                        min="1"
-                    />
-                </div>
+                <label className="form-label">Amount (₹) *</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  placeholder="e.g. 50000"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  min="1"
+                  required
+                />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Source</label>
+                <label className="form-label">Income Source *</label>
                 <select
                   className="form-input"
                   value={source}
                   onChange={(e) => setSource(e.target.value)}
+                  required
                 >
                   <option value="">Select source</option>
-                  {SOURCES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                  {SOURCES.map((src) => (
+                    <option key={src} value={src}>{src}</option>
                   ))}
                 </select>
               </div>
+            </div>
 
-              <div className="form-group">
-                <label className="form-label">Date</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </div>
+            <div className="form-group">
+              <label className="form-label">Deposit Date</label>
+              <input
+                type="date"
+                className="form-input"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
 
-              <div style={{ display: "flex", gap: "12px", marginTop: '8px' }}>
-                <button type="submit" className="btn-primary" disabled={loading} style={{ flex: 1 }}>
-                  {loading ? "Saving..." : editingId ? "Update Record" : "Save Income"}
+            <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+              <button 
+                type="submit" 
+                className="add-btn" 
+                disabled={loading} 
+                style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+              >
+                {loading ? "Saving..." : (editingId ? "Update Income" : "+ Add Income Deposit")}
+              </button>
+
+              {editingId && (
+                <button type="button" className="btn-secondary" onClick={resetForm} style={{ padding: '0 18px' }}>
+                  Cancel
                 </button>
-
-                {editingId && (
-                  <button type="button" className="btn-secondary" onClick={resetForm}>
-                    Cancel
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
+              )}
+            </div>
+          </form>
         </div>
 
-        {/* Right Column: History & Charts (60%) */}
-        <div className="income-data-section">
-          {/* Filtering */}
+        {/* Income List Section */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          {/* Filtering Toolbar */}
           <FilterBar onFilterChange={handleFilterChange} showCategory={false} />
 
-          {/* List Card */}
-          <div className="card" style={{ width: '100%', marginBottom: '24px' }}>
-            <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          {/* List Container Card */}
+          <div className="card">
+            <div className="card-header" style={{ marginBottom: '16px' }}>
               <div>
-                <div className="card-title">Income History</div>
-                <div className="card-subtitle">{totalRecords} total records found</div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  onClick={handleExportCSV}
-                  className="btn-secondary" 
-                  style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  <FiDownload /> CSV
-                </button>
-                <button 
-                  onClick={exportToPDF}
-                  className="btn-secondary" 
-                  style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  <FiFileText /> PDF
-                </button>
+                <h3 className="card-title">Income History</h3>
+                <p className="card-subtitle">{totalRecords} total deposits recorded</p>
               </div>
             </div>
 
             {incomes.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">💰</div>
-                <div className="empty-state-text">No records found</div>
-                <div className="empty-state-subtext">There are no income records matching your current filter criteria.</div>
-              </div>
+              <EmptyState
+                icon={<FiTrendingUp size={24} />}
+                title="No income records found"
+                description="No records match your active search filters."
+              />
             ) : (
-              <div className="income-list">
-                <div className="table-wrapper">
-                  <table style={{ width: '100%' }}>
-                    <thead>
-                      <tr>
-                        <th>SOURCE</th>
-                        <th style={{ textAlign: 'center' }}>DATE</th>
-                        <th style={{ textAlign: 'right' }}>AMOUNT</th>
-                        <th style={{ textAlign: 'right' }}>ACTIONS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {incomes.map((inc) => (
-                        <tr key={inc._id}>
-                          <td>
-                            <div style={{ fontWeight: 600 }}>{inc.source}</div>
-                          </td>
-                          <td style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                            {new Date(inc.date).toLocaleDateString()}
-                          </td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#10b981' }}>
-                            + ₹{inc.amount.toLocaleString()}
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                              <button onClick={() => handleEdit(inc)} className="btn-icon edit" title="Edit">
-                                <FiEdit2 size={14} />
-                              </button>
-                              <button onClick={() => handleDelete(inc._id)} className="btn-icon delete" title="Delete">
-                                <FiTrash2 size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="expense-list">
+                {incomes.map((inc) => (
+                  <div key={inc._id} className="expense-item">
+                    <div className="expense-item-icon" style={{ background: "var(--accent-green-light)", color: "var(--accent-green)" }}>
+                      {SOURCE_ICONS[inc.source] || "💰"}
+                    </div>
+
+                    <div className="expense-item-details">
+                      <div className="expense-item-category">{inc.source || "Income"}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        Deposit received
+                      </div>
+                    </div>
+
+                    <div className="expense-item-date hide-mobile" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      {inc.date ? new Date(inc.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "-"}
+                    </div>
+
+                    <div className="expense-item-amount income">
+                      + ₹{Number(inc.amount || 0).toLocaleString("en-IN")}
+                    </div>
+
+                    <div className="expense-item-actions">
+                      <button className="btn-icon edit" onClick={() => handleEdit(inc)} title="Edit income" aria-label="Edit income">
+                        <FiEdit2 size={13} />
+                      </button>
+                      <button className="btn-icon delete" onClick={() => handleDelete(inc._id)} title="Delete income" aria-label="Delete income">
+                        <FiTrash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
             {/* Pagination Controls */}
-            <Pagination 
-              currentPage={currentPage} 
-              totalPages={totalPages} 
-              onPageChange={handlePageChange} 
-            />
+            <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-light)' }}>
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={totalPages} 
+                onPageChange={handlePageChange} 
+              />
+            </div>
           </div>
-
-          {/* Income Breakdown Pie Chart */}
-          <PieChartCard 
-            categoryData={incomeSourceData} 
-            total={totalIncome} 
-            title="Revenue Breakdown" 
-            subtitle="Income distribution by source"
-          />
         </div>
+      </div>
+      
+      <style>{`
+        @media (max-width: 640px) {
+          .hide-mobile { display: none; }
+        }
+      `}</style>
     </div>
   );
 }

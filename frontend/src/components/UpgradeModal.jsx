@@ -6,7 +6,7 @@ import UpiPaymentModal from "./UpiPaymentModal";
 
 function UpgradeModal({ onClose, onUpgrade }) {
   const [selectedPlan, setSelectedPlan] = useState("MONTHLY");
-  const [paymentMethod, setPaymentMethod] = useState(null); // null = selection screen, "RAZORPAY" or "UPI_MANUAL"
+  const [paymentMethod, setPaymentMethod] = useState(null);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showUpiFlow, setShowUpiFlow] = useState(false);
 
@@ -25,22 +25,19 @@ function UpgradeModal({ onClose, onUpgrade }) {
     }
   };
 
-  // If UPI flow is active, render UpiPaymentModal instead
   if (showUpiFlow) {
     return (
       <UpiPaymentModal
         selectedPlan={selectedPlan}
         onClose={onClose}
-        onSubmitted={() => {
-          // Payment request submitted successfully — user will be notified on activation
-        }}
+        onSubmitted={() => {}}
       />
     );
   }
 
   const modalJSX = (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 100000 }}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "520px", padding: "32px" }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "520px", padding: "28px" }}>
         {showCheckout ? (
           <RazorpayCheckout
             selectedPlan={selectedPlan}
@@ -53,60 +50,60 @@ function UpgradeModal({ onClose, onUpgrade }) {
           />
         ) : (
           <>
-            <button className="modal-close" onClick={onClose}>
+            <button className="modal-close" onClick={onClose} aria-label="Close Upgrade Modal">
               <FiX />
             </button>
 
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '22px' }}>
               <div style={{
-                width: '60px',
-                height: '60px',
-                borderRadius: '18px',
+                width: '54px',
+                height: '54px',
+                borderRadius: '16px',
                 background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
                 color: '#fff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.75rem',
-                margin: '0 auto 16px',
-                boxShadow: '0 10px 20px rgba(124, 58, 237, 0.3)'
+                fontSize: '1.5rem',
+                margin: '0 auto 12px',
+                boxShadow: '0 8px 24px rgba(124, 58, 237, 0.35)'
               }}>
                 <FiStar />
               </div>
-              <h2 style={{ fontSize: '1.65rem', fontWeight: 800, marginBottom: '6px' }}>Upgrade to Pro 💎</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Experience the full power and intelligence of FinTrack</p>
+              <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>Upgrade to FinTrack Pro</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Experience the full power of automated insights and exports</p>
             </div>
 
-            {/* Plan Selector */}
+            {/* Plan Selector Grid */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: '14px',
-              marginBottom: '24px'
+              gap: '12px',
+              marginBottom: '20px'
             }}>
               {/* Monthly Card */}
               <div
                 onClick={() => setSelectedPlan("MONTHLY")}
                 style={{
                   position: 'relative',
-                  padding: '16px',
+                  padding: '14px',
                   borderRadius: '14px',
                   background: selectedPlan === "MONTHLY" ? 'rgba(124, 58, 237, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-                  border: `2px solid ${selectedPlan === "MONTHLY" ? '#7c3aed' : 'var(--border-light, rgba(255, 255, 255, 0.08))'}`,
+                  border: `2px solid ${selectedPlan === "MONTHLY" ? '#7c3aed' : 'var(--border-color)'}`,
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'var(--transition-fast)',
                   textAlign: 'left'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: selectedPlan === "MONTHLY" ? '#a78bfa' : 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: selectedPlan === "MONTHLY" ? '#c4b5fd' : 'var(--text-muted)' }}>
                     MONTHLY
                   </span>
                   <div style={{
-                    width: '18px',
-                    height: '18px',
+                    width: '16px',
+                    height: '16px',
                     borderRadius: '50%',
-                    border: `2px solid ${selectedPlan === "MONTHLY" ? '#7c3aed' : 'var(--border-light)'}`,
+                    border: `2px solid ${selectedPlan === "MONTHLY" ? '#7c3aed' : 'var(--border-color)'}`,
                     background: selectedPlan === "MONTHLY" ? '#7c3aed' : 'transparent',
                     display: 'flex',
                     alignItems: 'center',
@@ -115,11 +112,11 @@ function UpgradeModal({ onClose, onUpgrade }) {
                     {selectedPlan === "MONTHLY" && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />}
                   </div>
                 </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginBottom: '2px' }}>
-                  ₹149<span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>/month</span>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff', marginBottom: '2px' }}>
+                  ₹149<span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>/mo</span>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Billed every 30 days
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Standard monthly billing
                 </div>
               </div>
 
@@ -128,24 +125,24 @@ function UpgradeModal({ onClose, onUpgrade }) {
                 onClick={() => setSelectedPlan("YEARLY")}
                 style={{
                   position: 'relative',
-                  padding: '16px',
+                  padding: '14px',
                   borderRadius: '14px',
                   background: selectedPlan === "YEARLY" ? 'rgba(124, 58, 237, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-                  border: `2px solid ${selectedPlan === "YEARLY" ? '#7c3aed' : 'var(--border-light, rgba(255, 255, 255, 0.08))'}`,
+                  border: `2px solid ${selectedPlan === "YEARLY" ? '#7c3aed' : 'var(--border-color)'}`,
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'var(--transition-fast)',
                   textAlign: 'left'
                 }}
               >
                 <div style={{
                   position: 'absolute',
-                  top: '-10px',
-                  right: '12px',
+                  top: '-9px',
+                  right: '10px',
                   background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                   color: '#fff',
-                  fontSize: '0.65rem',
+                  fontSize: '0.62rem',
                   fontWeight: 800,
-                  padding: '2px 8px',
+                  padding: '2px 7px',
                   borderRadius: '10px',
                   boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
                   letterSpacing: '0.3px'
@@ -153,15 +150,15 @@ function UpgradeModal({ onClose, onUpgrade }) {
                   SAVE 44%
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: selectedPlan === "YEARLY" ? '#a78bfa' : 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: selectedPlan === "YEARLY" ? '#c4b5fd' : 'var(--text-muted)' }}>
                     YEARLY
                   </span>
                   <div style={{
-                    width: '18px',
-                    height: '18px',
+                    width: '16px',
+                    height: '16px',
                     borderRadius: '50%',
-                    border: `2px solid ${selectedPlan === "YEARLY" ? '#7c3aed' : 'var(--border-light)'}`,
+                    border: `2px solid ${selectedPlan === "YEARLY" ? '#7c3aed' : 'var(--border-color)'}`,
                     background: selectedPlan === "YEARLY" ? '#7c3aed' : 'transparent',
                     display: 'flex',
                     alignItems: 'center',
@@ -170,25 +167,25 @@ function UpgradeModal({ onClose, onUpgrade }) {
                     {selectedPlan === "YEARLY" && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />}
                   </div>
                 </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginBottom: '2px' }}>
-                  ₹999<span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>/year</span>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff', marginBottom: '2px' }}>
+                  ₹999<span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>/yr</span>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>
-                  Best Value — Save 44%
+                <div style={{ fontSize: '0.72rem', color: 'var(--accent-green)', fontWeight: 600 }}>
+                  Best Value — ₹83/mo
                 </div>
               </div>
             </div>
 
             {/* Feature List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px', padding: '0 4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', padding: '0 4px' }}>
               {features.map((feature, index) => (
-                <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ color: '#10b981', fontSize: '1.1rem', display: 'flex', flexShrink: 0 }}>
+                <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ color: 'var(--accent-green)', fontSize: '1rem', display: 'flex', flexShrink: 0 }}>
                     <FiCheck />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ color: '#a78bfa', fontSize: '1rem', flexShrink: 0 }}>{feature.icon}</span>
-                    <span style={{ fontSize: '0.88rem', fontWeight: 500, color: 'var(--text-secondary, #cbd5e1)' }}>{feature.text}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: '#c4b5fd', fontSize: '0.95rem', flexShrink: 0 }}>{feature.icon}</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>{feature.text}</span>
                   </div>
                 </div>
               ))}
@@ -196,27 +193,27 @@ function UpgradeModal({ onClose, onUpgrade }) {
 
             {/* Payment Method Selector */}
             <div style={{ marginBottom: '20px' }}>
-              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
-                Choose Payment Method
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '8px' }}>
+                Select Payment Channel
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {/* Instant Checkout (Razorpay) */}
                 <div
                   onClick={() => setPaymentMethod("RAZORPAY")}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '14px',
-                    padding: '14px 16px',
+                    gap: '12px',
+                    padding: '12px 14px',
                     borderRadius: '12px',
-                    border: `2px solid ${paymentMethod === "RAZORPAY" ? '#7c3aed' : 'var(--border-light, rgba(255,255,255,0.08))'}`,
+                    border: `2px solid ${paymentMethod === "RAZORPAY" ? '#7c3aed' : 'var(--border-color)'}`,
                     background: paymentMethod === "RAZORPAY" ? 'rgba(124, 58, 237, 0.08)' : 'rgba(255,255,255,0.02)',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease'
+                    transition: 'var(--transition-fast)'
                   }}
                 >
                   <div style={{
-                    width: '36px', height: '36px',
+                    width: '34px', height: '34px',
                     borderRadius: '10px',
                     background: 'rgba(59, 130, 246, 0.1)',
                     display: 'flex',
@@ -225,20 +222,20 @@ function UpgradeModal({ onClose, onUpgrade }) {
                     color: '#3b82f6',
                     flexShrink: 0
                   }}>
-                    <FiCreditCard size={18} />
+                    <FiCreditCard size={17} />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginBottom: '2px' }}>
-                      Instant Checkout
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', marginBottom: '1px' }}>
+                      Instant Gateway Checkout
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      Card, UPI, Net Banking via Razorpay
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Debit/Credit Card, Net Banking & Instant UPI via Razorpay
                     </div>
                   </div>
                   <div style={{
-                    width: '18px', height: '18px',
+                    width: '16px', height: '16px',
                     borderRadius: '50%',
-                    border: `2px solid ${paymentMethod === "RAZORPAY" ? '#7c3aed' : 'var(--border-light, rgba(255,255,255,0.15))'}`,
+                    border: `2px solid ${paymentMethod === "RAZORPAY" ? '#7c3aed' : 'var(--border-color)'}`,
                     background: paymentMethod === "RAZORPAY" ? '#7c3aed' : 'transparent',
                     display: 'flex',
                     alignItems: 'center',
@@ -255,17 +252,17 @@ function UpgradeModal({ onClose, onUpgrade }) {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '14px',
-                    padding: '14px 16px',
+                    gap: '12px',
+                    padding: '12px 14px',
                     borderRadius: '12px',
-                    border: `2px solid ${paymentMethod === "UPI_MANUAL" ? '#7c3aed' : 'var(--border-light, rgba(255,255,255,0.08))'}`,
+                    border: `2px solid ${paymentMethod === "UPI_MANUAL" ? '#7c3aed' : 'var(--border-color)'}`,
                     background: paymentMethod === "UPI_MANUAL" ? 'rgba(124, 58, 237, 0.08)' : 'rgba(255,255,255,0.02)',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease'
+                    transition: 'var(--transition-fast)'
                   }}
                 >
                   <div style={{
-                    width: '36px', height: '36px',
+                    width: '34px', height: '34px',
                     borderRadius: '10px',
                     background: 'rgba(16, 185, 129, 0.1)',
                     display: 'flex',
@@ -274,20 +271,20 @@ function UpgradeModal({ onClose, onUpgrade }) {
                     color: '#10b981',
                     flexShrink: 0
                   }}>
-                    <FiSmartphone size={18} />
+                    <FiSmartphone size={17} />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginBottom: '2px' }}>
-                      Pay via UPI Transfer
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', marginBottom: '1px' }}>
+                      Direct UPI Transfer
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      GPay, PhonePe, Paytm — manual verification
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Scan QR code / transfer via GPay, PhonePe, Paytm with manual UTR review
                     </div>
                   </div>
                   <div style={{
-                    width: '18px', height: '18px',
+                    width: '16px', height: '16px',
                     borderRadius: '50%',
-                    border: `2px solid ${paymentMethod === "UPI_MANUAL" ? '#7c3aed' : 'var(--border-light, rgba(255,255,255,0.15))'}`,
+                    border: `2px solid ${paymentMethod === "UPI_MANUAL" ? '#7c3aed' : 'var(--border-color)'}`,
                     background: paymentMethod === "UPI_MANUAL" ? '#7c3aed' : 'transparent',
                     display: 'flex',
                     alignItems: 'center',
@@ -303,30 +300,20 @@ function UpgradeModal({ onClose, onUpgrade }) {
             <button
               onClick={handleContinue}
               disabled={!paymentMethod}
+              className="btn-primary"
               style={{
                 width: '100%',
-                padding: '15px',
-                borderRadius: '12px',
-                border: 'none',
-                background: paymentMethod
-                  ? 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)'
-                  : 'rgba(124, 58, 237, 0.3)',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '1rem',
-                cursor: paymentMethod ? 'pointer' : 'not-allowed',
-                boxShadow: paymentMethod ? '0 10px 25px -5px rgba(124, 58, 237, 0.4)' : 'none',
-                transition: 'var(--transition)',
-                opacity: paymentMethod ? 1 : 0.6
+                padding: '13px',
+                fontSize: '0.95rem',
+                opacity: paymentMethod ? 1 : 0.5,
+                cursor: paymentMethod ? 'pointer' : 'not-allowed'
               }}
-              onMouseOver={(e) => paymentMethod && (e.target.style.transform = 'translateY(-2px)')}
-              onMouseOut={(e) => paymentMethod && (e.target.style.transform = 'translateY(0)')}
             >
               Continue with {selectedPlan === "YEARLY" ? "Yearly Pro (₹999)" : "Monthly Pro (₹149)"}
             </button>
 
-            <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Secure server-verified checkout. Non-destructive expiration.
+            <p style={{ textAlign: 'center', marginTop: '14px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              Encrypted transaction processing. Non-destructive tier expiration.
             </p>
           </>
         )}
@@ -338,4 +325,3 @@ function UpgradeModal({ onClose, onUpgrade }) {
 }
 
 export default UpgradeModal;
-

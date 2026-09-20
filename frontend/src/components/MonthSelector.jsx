@@ -44,99 +44,101 @@ function MonthSelector({ selectedMonth, selectedYear, onChange }) {
   }, []);
 
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', width: '160px', zIndex: 100 }}>
+    <div ref={dropdownRef} style={{ position: 'relative', minWidth: '160px', zIndex: 100 }}>
       {/* Trigger */}
-      <div 
+      <button 
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between',
-            gap: '10px', 
-            background: 'var(--bg-card)', 
-            padding: '10px 16px', 
-            borderRadius: '12px', 
-            border: `1px solid ${isOpen ? 'var(--bg-accent)' : 'var(--border-light)'}`,
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            fontWeight: 700,
-            color: isOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
-            transition: 'all 0.2s ease',
-            boxShadow: isOpen ? '0 0 0 3px rgba(124, 58, 237, 0.1)' : 'none'
+          width: '100%',
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          gap: '10px', 
+          background: 'var(--bg-surface-2)', 
+          padding: '10px 14px', 
+          borderRadius: '12px', 
+          border: `1px solid ${isOpen ? 'var(--bg-accent)' : 'var(--border-color)'}`,
+          cursor: 'pointer',
+          fontSize: '0.85rem',
+          fontWeight: 700,
+          color: isOpen ? '#fff' : 'var(--text-secondary)',
+          transition: 'var(--transition)',
+          boxShadow: isOpen ? '0 0 0 3px var(--bg-accent-soft)' : 'none'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <FiCalendar style={{ color: 'var(--bg-accent)', fontSize: '1rem' }} />
-            <span>{selectedLabel}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <FiCalendar style={{ color: '#c4b5fd', fontSize: '0.95rem' }} />
+          <span>{selectedLabel}</span>
         </div>
         <FiChevronDown style={{ 
-            transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', 
-            transition: 'transform 0.3s ease',
-            opacity: 0.7
+          transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', 
+          transition: 'transform 0.25s ease',
+          opacity: 0.7
         }} />
-      </div>
+      </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
         <div 
-            className="animate-fade"
-            style={{ 
-                position: 'absolute', 
-                top: 'calc(100% + 8px)', 
-                left: 0, 
-                right: 0, 
-                background: '#1e293b', // Deep slate
-                borderRadius: '12px', 
-                border: '1px solid var(--border-light)',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
-                overflow: 'hidden',
-                padding: '6px'
-            }}
+          className="animate-fade"
+          style={{ 
+            position: 'absolute', 
+            top: 'calc(100% + 6px)', 
+            left: 0, 
+            right: 0, 
+            background: 'var(--bg-surface-2)', 
+            borderRadius: '12px', 
+            border: '1px solid var(--border-color)',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.5)',
+            overflow: 'hidden',
+            padding: '6px',
+            zIndex: 1000
+          }}
         >
-            <div style={{ maxHeight: '280px', overflowY: 'auto', scrollbarWidth: 'none' }}>
-                {options.map((opt, i) => {
-                    const isSelected = opt.month === selectedMonth && opt.year === selectedYear;
-                    return (
-                        <div 
-                            key={i}
-                            onClick={() => {
-                                onChange(opt.month, opt.year);
-                                setIsOpen(false);
-                            }}
-                            style={{ 
-                                padding: '10px 14px', 
-                                borderBottom: i === options.length - 1 ? 'none' : '1px solid rgba(255, 255, 255, 0.03)',
-                                cursor: 'pointer',
-                                fontSize: '0.85rem',
-                                fontWeight: isSelected ? 800 : 500,
-                                color: isSelected ? 'var(--bg-accent)' : 'var(--text-secondary)',
-                                background: isSelected ? 'rgba(124, 58, 237, 0.08)' : 'transparent',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                transition: 'all 0.2s ease',
-                                borderRadius: '8px',
-                                margin: '2px 0'
-                            }}
-                            onMouseEnter={(e) => {
-                                if (!isSelected) {
-                                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                                  e.currentTarget.style.color = '#fff';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!isSelected) {
-                                    e.currentTarget.style.background = 'transparent';
-                                    e.currentTarget.style.color = 'var(--text-secondary)';
-                                }
-                            }}
-                        >
-                            {opt.label}
-                            {isSelected && <FiCheck size={14} />}
-                        </div>
-                    );
-                })}
-            </div>
+          <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
+            {options.map((opt, i) => {
+              const isSelected = opt.month === selectedMonth && opt.year === selectedYear;
+              return (
+                <div 
+                  key={i}
+                  onClick={() => {
+                    onChange(opt.month, opt.year);
+                    setIsOpen(false);
+                  }}
+                  style={{ 
+                    padding: '9px 12px', 
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: isSelected ? 800 : 500,
+                    color: isSelected ? '#c4b5fd' : 'var(--text-secondary)',
+                    background: isSelected ? 'var(--bg-accent-soft)' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'var(--transition-fast)',
+                    borderRadius: '8px',
+                    margin: '2px 0'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                      e.currentTarget.style.color = '#fff';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                    }
+                  }}
+                >
+                  <span>{opt.label}</span>
+                  {isSelected && <FiCheck size={14} style={{ color: '#a78bfa' }} />}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -144,4 +146,3 @@ function MonthSelector({ selectedMonth, selectedYear, onChange }) {
 }
 
 export default MonthSelector;
-

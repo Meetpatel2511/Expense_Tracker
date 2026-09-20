@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import API from "../utils/api";
 import { useUser } from "@clerk/clerk-react";
-import { FiDollarSign, FiTrendingUp, FiCreditCard, FiPieChart, FiDownload, FiZap, FiLock, FiCalendar, FiFileText } from "react-icons/fi";
+import { FiDollarSign, FiTrendingUp, FiCreditCard, FiPieChart, FiDownload, FiZap, FiLock, FiFileText } from "react-icons/fi";
 import { exportToExcel, fetchAllPeriodTransactions } from "../utils/exportUtils";
 import { generateFinancialReportPDF } from "../utils/pdfReportGenerator";
 
+import PageHeader from "../components/PageHeader";
 import StatCard from "../components/StatCard";
 import Charts, { CategoryPieChart } from "../components/Charts";
 import MonthlyBudgetCard from "../components/MonthlyBudgetCard";
@@ -16,7 +17,7 @@ import { usePro } from "../context/ProContext";
 
 function Dashboard() {
   const { user } = useUser();
-  const { isPro, isProActive, loading: proLoading } = usePro();
+  const { isPro, isProActive } = usePro();
   
   // State for Selection
   const now = new Date();
@@ -28,11 +29,11 @@ function Dashboard() {
   const [budget, setBudget] = useState({});
   const [categories, setCategories] = useState({});
   const [monthlyData, setMonthlyData] = useState([]);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [, setLastUpdated] = useState(null);
+  const [, setIsRefreshing] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
 
   const savingsRate = summary?.totalIncome > 0 
     ? Math.round((summary?.savings / summary?.totalIncome) * 100) 
@@ -44,7 +45,6 @@ function Dashboard() {
   const fetchData = useCallback(async (isInitial = true) => {
     try {
       if (isInitial) {
-        // 1. Check Cache first for "Instant" feel
         const cached = sessionStorage.getItem(CACHE_KEY);
         if (cached) {
           const { data, timestamp } = JSON.parse(cached);
@@ -54,11 +54,9 @@ function Dashboard() {
             setMonthlyData(data.monthlyData);
             setBudget(data.budgets);
             setCategories(data.categories);
-            // Strictly guard cached Smart Alerts by current active Pro entitlement
             setAlerts(isProActive ? (data.alerts || []) : []);
             setLastUpdated(data.lastUpdated);
             setLoading(false);
-            // Even if cache is valid, we'll refresh in background quietly
             setIsRefreshing(true);
           }
         }
@@ -68,7 +66,6 @@ function Dashboard() {
       const res = await API.get(`/expense/dashboard${params}`);
       const freshData = res.data;
 
-      // 2. Update State
       setSummary(freshData.summary);
       setExpenses(freshData.recentTransactions);
       setMonthlyData(freshData.monthlyData);
@@ -77,7 +74,6 @@ function Dashboard() {
       setAlerts(isProActive ? (freshData.alerts || []) : []);
       setLastUpdated(freshData.lastUpdated);
 
-      // 3. Update Cache
       sessionStorage.setItem(CACHE_KEY, JSON.stringify({
         data: freshData,
         timestamp: Date.now()
@@ -85,7 +81,6 @@ function Dashboard() {
 
     } catch (err) {
       console.error("Dashboard fetch error:", err);
-      // Only show error if we have no data at all
       if (loading) setError("Failed to load dashboard data");
     } finally {
       setLoading(false);
@@ -97,7 +92,6 @@ function Dashboard() {
     fetchData();
   }, [fetchData]);
 
-  // Synchronize alerts state if Pro status changes
   useEffect(() => {
     if (!isProActive) {
       setAlerts([]);
@@ -111,7 +105,6 @@ function Dashboard() {
     }
 
     try {
-      // Retrieve complete detailed income and expense transaction records for the entire reporting month
       const startDate = new Date(Date.UTC(selectedYear, selectedMonth - 1, 1)).toISOString();
       const endDate = new Date(Date.UTC(selectedYear, selectedMonth, 0, 23, 59, 59, 999)).toISOString();
 
@@ -170,10 +163,7 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="dashboard-content animate-fade" style={{ 
-        display: 'flex', flexDirection: 'column', gap: 'clamp(16px, 3vw, 32px)', width: '100%', paddingTop: '8px'
-      }}>
-        {/* Skeleton Stat Cards */}
+      <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', paddingTop: '8px' }}>
         <div className="stat-grid">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="skeleton-card">
@@ -183,7 +173,6 @@ function Dashboard() {
             </div>
           ))}
         </div>
-        {/* Skeleton Chart */}
         <div className="responsive-flex">
           <div style={{ flex: 2 }}>
             <div className="skeleton-chart">
@@ -199,91 +188,45 @@ function Dashboard() {
             </div>
           </div>
         </div>
-        {/* Skeleton Table */}
-        <div className="skeleton-card">
-          <div className="skeleton skeleton-line medium"></div>
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="skeleton-table-row">
-              <div className="skeleton skeleton-cell" style={{ flex: 0.5 }}></div>
-              <div className="skeleton skeleton-cell"></div>
-              <div className="skeleton skeleton-cell"></div>
-              <div className="skeleton skeleton-cell" style={{ flex: 0.7 }}></div>
-            </div>
-          ))}
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="dashboard-content animate-fade" style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      gap: 'clamp(16px, 3vw, 32px)', 
-      width: '100%',
-      boxSizing: 'border-box'
-    }}>
+    <div className="dashboard-content animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
       
-      {/* Controls Row: Month Selector & Download Report */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'flex-end',
-        gap: '12px',
-        flexWrap: 'wrap',
-        paddingTop: '8px'
-      }}>
+      {/* Page Header with Month Selector & Export Controls */}
+      <PageHeader 
+        title="Financial Overview" 
+        subtitle="Real-time summary of your balances, income, and expenditures"
+        badge={isPro ? "Pro Active" : null}
+      >
         <MonthSelector 
-            selectedMonth={selectedMonth} 
-            selectedYear={selectedYear} 
-            onChange={handleMonthChange} 
+          selectedMonth={selectedMonth} 
+          selectedYear={selectedYear} 
+          onChange={handleMonthChange} 
         />
+        
         <button 
-            onClick={handleDownloadReport} 
-            title={isPro ? "Download PDF Report" : "Pro Feature - Upgrade to Download"}
-            className={`btn-primary ${isPro ? "gradient-blue" : ""}`}
-            style={{ 
-                padding: '10px 20px', 
-                borderRadius: '12px',
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                opacity: isPro ? 1 : 0.7,
-                cursor: 'pointer',
-                border: 'none',
-                width: 'auto',
-                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.15)',
-                transition: 'all 0.3s ease'
-            }}
+          onClick={handleDownloadReport} 
+          title={isPro ? "Download PDF Report" : "Pro Feature - Upgrade to Download"}
+          className={`btn-primary ${isPro ? "gradient-blue" : ""}`}
+          style={{ width: 'auto', opacity: isPro ? 1 : 0.85 }}
         >
-            {isPro ? <FiDownload size={18} /> : "🔒"} 
-            <span className="hide-mobile">{isPro ? "Download Report" : "Unlock Pro"}</span>
+          {isPro ? <FiDownload size={16} /> : <FiLock size={14} />} 
+          <span className="hide-mobile">{isPro ? "PDF Report" : "Unlock PDF"}</span>
         </button>
 
         <button 
-            onClick={handleExportExcel} 
-            title={isPro ? "Export to Excel" : "Pro Feature - Upgrade to Export"}
-            className={`btn-secondary`}
-            style={{ 
-                padding: '10px 20px', 
-                borderRadius: '12px',
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                opacity: isPro ? 1 : 0.7,
-                cursor: 'pointer',
-                width: 'auto',
-                transition: 'all 0.3s ease'
-            }}
+          onClick={handleExportExcel} 
+          title={isPro ? "Export to Excel" : "Pro Feature - Upgrade to Export"}
+          className="btn-secondary"
+          style={{ width: 'auto', opacity: isPro ? 1 : 0.85 }}
         >
-            <FiFileText size={18} />
-            <span className="hide-mobile">Export Excel</span>
+          <FiFileText size={16} />
+          <span className="hide-mobile">Excel</span>
         </button>
-      </div>
+      </PageHeader>
 
       {/* Row 1: Stat Cards */}
       <div className="stat-grid">
@@ -297,7 +240,7 @@ function Dashboard() {
         <StatCard 
           title="Total Income" 
           value={summary?.totalIncome || 0} 
-          subtext="Main Monthly Salary" 
+          subtext="Main Monthly Salary & Deposits" 
           icon={<FiTrendingUp />} 
           color="#10b981" 
         />
@@ -321,71 +264,92 @@ function Dashboard() {
       <div className="responsive-flex">
         <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 }}>
             
-            {/* AI Insights for PRO users */}
-            {isPro ? (
-               <div className="card" style={{ background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ color: '#a78bfa', fontSize: '1.2rem' }}><FiZap /></div>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>AI Smart Alerts</h3>
-                    </div>
-                  </div>
-                   <DashboardAlerts alerts={alerts} />
-                   
-                   {/* Saving Rate Insight (Pro Feature) */}
-                   <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Savings Efficiency</span>
-                            <span style={{ fontSize: '1rem', fontWeight: 800, color: '#10b981' }}>{savingsRate}%</span>
-                        </div>
-                        <div style={{ height: '8px', width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '10px', overflow: 'hidden' }}>
-                            <div style={{ 
-                                height: '100%', 
-                                width: `${Math.min(100, Math.max(0, savingsRate))}%`, 
-                                background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
-                                borderRadius: '10px',
-                                transition: 'width 1s ease-out'
-                            }}></div>
-                        </div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                            {savingsRate >= 20 ? "Excellent! You're above the 20% savings rule." : "Goal: Try to save at least 20% of your income."}
-                        </p>
-                   </div>
+          {/* Smart Alerts for PRO users */}
+          {isPro ? (
+            <div className="card" style={{ background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%)' }}>
+              <div className="card-header" style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ color: '#c4b5fd', fontSize: '1.2rem', display: 'flex' }}><FiZap /></div>
+                  <h3 className="card-title">Smart Alerts & Insights</h3>
                 </div>
-            ) : (
-                <div className="card" style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', inset: 0, backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', color: '#a78bfa', marginBottom: '12px' }}><FiLock /></div>
-                            <div style={{ fontWeight: 700, marginBottom: '4px' }}>AI Analytics Locked</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>Upgrade to Pro to unlock Smart Alerts</div>
-                            <button className="upgrade-btn-small" onClick={() => window.location.href='/profile'}>Upgrade to Pro</button>
-                        </div>
-                    </div>
-                    <div style={{ opacity: 0.2 }}>
-                        <div style={{ height: '20px', width: '200px', background: '#334155', borderRadius: '4px', marginBottom: '12px' }}></div>
-                        <div style={{ height: '14px', width: '100%', background: '#334155', borderRadius: '4px', marginBottom: '8px' }}></div>
-                        <div style={{ height: '14px', width: '80%', background: '#334155', borderRadius: '4px' }}></div>
-                    </div>
+                <span className="badge badge-pro">Automated</span>
+              </div>
+              
+              <DashboardAlerts alerts={alerts} />
+               
+              {/* Saving Rate Insight (Pro Feature) */}
+              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Savings Efficiency</span>
+                  <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent-green)' }}>{savingsRate}%</span>
                 </div>
-            )}
-
-            <div className="card" style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-                    <div>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Income vs Expense</h3>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Trend analysis for {selectedYear}</p>
-                    </div>
-                    <div style={{ padding: '6px 16px', borderRadius: '8px', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-light)', color: '#a78bfa', fontSize: '0.8rem', fontWeight: 700 }}>
-                        Yearly View
-                    </div>
+                <div style={{ height: '8px', width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div style={{ 
+                    height: '100%', 
+                    width: `${Math.min(100, Math.max(0, savingsRate))}%`, 
+                    background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
+                    borderRadius: '10px',
+                    transition: 'width 0.8s ease-out'
+                  }}></div>
                 </div>
-                <div style={{ width: '100%', overflow: 'hidden' }}>
-                  <Charts monthlyData={monthlyData} hideHeader={true} />
-                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                  {savingsRate >= 20 ? "Excellent! You are above the recommended 20% savings rule." : "Goal: Try to save at least 20% of your total income."}
+                </p>
+              </div>
             </div>
+          ) : (
+            <div className="card" style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', inset: 0, backdropFilter: 'blur(5px)', background: 'rgba(14, 17, 26, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, padding: '24px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ 
+                    width: '44px', 
+                    height: '44px', 
+                    borderRadius: '12px', 
+                    background: 'var(--bg-accent-soft)', 
+                    color: '#c4b5fd', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    margin: '0 auto 12px',
+                    fontSize: '1.25rem'
+                  }}>
+                    <FiLock />
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', marginBottom: '4px' }}>Smart Alerts & Analytics</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', maxWidth: '260px' }}>
+                    Upgrade to Pro to unlock automated spending pattern analysis and Smart Alerts.
+                  </div>
+                  <button className="upgrade-btn-small" onClick={() => window.location.href='/profile'}>
+                    Upgrade to Pro
+                  </button>
+                </div>
+              </div>
+              <div style={{ opacity: 0.15 }}>
+                <div style={{ height: '20px', width: '200px', background: '#334155', borderRadius: '4px', marginBottom: '12px' }}></div>
+                <div style={{ height: '14px', width: '100%', background: '#334155', borderRadius: '4px', marginBottom: '8px' }}></div>
+                <div style={{ height: '14px', width: '80%', background: '#334155', borderRadius: '4px' }}></div>
+              </div>
+            </div>
+          )}
+
+          {/* Income vs Expense Chart */}
+          <div className="card" style={{ flex: 1, minWidth: 0 }}>
+            <div className="card-header">
+              <div>
+                <h3 className="card-title">Income vs Expense</h3>
+                <p className="card-subtitle">Monthly cash flow comparison for {selectedYear}</p>
+              </div>
+              <span className="badge badge-neutral">
+                Yearly View
+              </span>
+            </div>
+            <div style={{ width: '100%', overflow: 'hidden' }}>
+              <Charts monthlyData={monthlyData} hideHeader={true} />
+            </div>
+          </div>
         </div>
         
+        {/* Right Column: Monthly Budget, Health Score, Category Breakdown */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <MonthlyBudgetCard 
             budget={budget} 
@@ -395,13 +359,14 @@ function Dashboard() {
           />
           <HealthScoreCard isPro={isPro} />
           
-          {/* New Category Breakdown Card */}
           <div className="card">
-              <div style={{ marginBottom: '20px' }}>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Category Breakdown</h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Distribution of expenses</p>
+            <div className="card-header" style={{ marginBottom: '12px' }}>
+              <div>
+                <h3 className="card-title">Expense Distribution</h3>
+                <p className="card-subtitle">Spending breakdown by category</p>
               </div>
-              <CategoryPieChart data={categories} />
+            </div>
+            <CategoryPieChart data={categories} />
           </div>
         </div>
       </div>

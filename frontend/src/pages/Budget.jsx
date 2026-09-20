@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import API from "../utils/api";
 import BudgetProgress from "../components/BudgetProgress";
 import MonthSelector from "../components/MonthSelector";
-import { FiTarget, FiPlus, FiTrash2 } from "react-icons/fi";
+import PageHeader from "../components/PageHeader";
+import { FiTarget, FiPlus } from "react-icons/fi";
 import toast from "react-hot-toast";
 
 const OPTIONAL_CATEGORIES = [
@@ -55,7 +56,7 @@ function Budget() {
         amount: Number(amount),
         category 
       });
-      toast.success(`Budget for ${category} updated!`);
+      toast.success(`Budget limit for ${category} saved!`);
       setAmount("");
       fetchBudgetStatus();
     } catch (err) {
@@ -78,82 +79,95 @@ function Budget() {
   }
 
   return (
-    <div className="animate-fade">
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "24px", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+    <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <PageHeader 
+        title="Budget Planning" 
+        subtitle="Set maximum expenditure targets for specific categories or overall monthly cap"
+      >
         <MonthSelector 
           selectedMonth={selectedMonth} 
           selectedYear={selectedYear} 
           onChange={handleMonthChange} 
         />
-        <div className="badge">
-          <FiTarget style={{ marginRight: 8 }} />
-          Actively Tracking
-        </div>
-      </div>
+        <span className="badge badge-success">
+          <FiTarget size={13} /> Actively Tracking
+        </span>
+      </PageHeader>
 
       <div className="page-grid">
         {/* Left: Input Card */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '32px', height: 'fit-content' }}>
-          <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>Manage Monthly Limits</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Set your maximum spending for specific categories or a global limit.</p>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: 'fit-content' }}>
+          <div className="card-header" style={{ marginBottom: 0 }}>
+            <div>
+              <h3 className="card-title">Manage Spending Limits</h3>
+              <p className="card-subtitle">Select category and configure monthly budget ceiling</p>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="form-group">
-                <label className="form-label">SELECT CATEGORY</label>
-                <select 
-                  className="form-input" 
-                  value={category} 
-                  onChange={(e) => setCategory(e.target.value)}
-                >
-                  {OPTIONAL_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
+              <label className="form-label">Category</label>
+              <select 
+                className="form-input" 
+                value={category} 
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                {OPTIONAL_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
             </div>
 
             <div className="form-group">
-                <label className="form-label">BUDGET AMOUNT (₹)</label>
-                <input 
-                  type="number"
-                  className="form-input"
-                  placeholder="e.g. 5000"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
+              <label className="form-label">Budget Limit Amount (₹)</label>
+              <input 
+                type="number"
+                className="form-input" 
+                placeholder="e.g. 5000"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                min="1"
+                required
+              />
             </div>
 
-            <button type="submit" className="add-btn" disabled={loading} style={{ width: '100%', marginTop: '8px' }}>
-              <FiPlus size={18} style={{ marginRight: 8 }} />
-              {loading ? "Saving..." : `Set ${category} Budget`}
+            <button type="submit" className="add-btn" disabled={loading} style={{ width: '100%', marginTop: '4px' }}>
+              <FiPlus size={16} />
+              <span>{loading ? "Saving..." : `Set ${category} Budget`}</span>
             </button>
           </form>
 
           {/* Quick Recap of set budgets */}
-          <div style={{ marginTop: '12px' }}>
-            <h4 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>Active Budgets</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ marginTop: '8px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px' }}>
+              Active Budgets for Period
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {budgetStatus?.hasBudget ? [budgetStatus.global, ...(budgetStatus.categories || [])].map((b, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--border-light)' }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--border-light)' }}>
                   <div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{b.category || "Global"}</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>{b.category || "Global"}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Limit: ₹{b.budget.toLocaleString()}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: b.percentage >= 100 ? 'var(--accent-danger)' : 'var(--accent-green)' }}>
+                    <span 
+                      className={`badge ${b.percentage >= 100 ? "badge-danger" : (b.percentage >= 80 ? "badge-warning" : "badge-success")}`}
+                      style={{ fontSize: '0.72rem', padding: '2px 8px' }}
+                    >
                       {b.percentage}% Used
-                    </div>
+                    </span>
                   </div>
                 </div>
               )) : (
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>No budgets set for this month.</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
+                  No budgets configured for this month.
+                </p>
               )}
             </div>
           </div>
         </div>
 
-        {/* Right: Visual Summary */}
-        <div style={{ minHeight: '500px' }}>
-           <BudgetProgress budget={budgetStatus} />
+        {/* Right: Visual Summary Progress Card */}
+        <div style={{ minHeight: '460px' }}>
+          <BudgetProgress budget={budgetStatus} />
         </div>
       </div>
     </div>
