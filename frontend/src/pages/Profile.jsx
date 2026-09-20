@@ -58,22 +58,6 @@ function Profile() {
     fetchProfile();
   }, []);
 
-  const handleUpgrade = async (paymentData) => {
-    if (!paymentData) return;
-    try {
-      const res = await API.post("/user/upgrade-pro", paymentData);
-      if (res.data.isPro) {
-        await refreshProStatus();
-        await fetchProfile();
-        setShowUpgradeModal(false);
-        alert("🎉 Subscription activated successfully! Welcome to FinTrack Pro.");
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || "Upgrade failed. Please try again.");
-      console.error("Upgrade error:", err);
-    }
-  };
-
   if (loading) {
     return (
       <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingTop: '8px' }}>
@@ -426,7 +410,6 @@ function Profile() {
       {showUpgradeModal && (
         <UpgradeModal
           onClose={() => setShowUpgradeModal(false)}
-          onUpgrade={handleUpgrade}
         />
       )}
 

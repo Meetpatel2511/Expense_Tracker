@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getProfile, updateProfile, createOrder, upgradeToPro, getProStatus, resetPro, getHealthScore } = require("../controllers/userController");
+const { getProfile, updateProfile, getProStatus, resetPro, getHealthScore } = require("../controllers/userController");
 const authMiddleware = require("../middleware/authMiddleware");
 const requirePro = require("../middleware/proMiddleware");
 
@@ -10,8 +10,6 @@ router.use(authMiddleware);
 router.get("/profile", getProfile);
 router.get("/health-score", requirePro, getHealthScore);
 router.put("/update", updateProfile);
-router.post("/create-order", createOrder);
-router.post("/upgrade-pro", upgradeToPro);
 router.get("/pro-status", getProStatus);
 
 // DEV ONLY: Reset Pro status for testing — blocked in production

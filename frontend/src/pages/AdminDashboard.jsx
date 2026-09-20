@@ -206,9 +206,7 @@ function AdminDashboard() {
             {formatCurrency(metrics.revenue?.totalRecognizedRevenue)}
           </div>
           <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "flex", gap: "6px" }}>
-            <span>UPI: {formatCurrency(metrics.revenue?.manualUpiRevenue)}</span>
-            <span>•</span>
-            <span>Razorpay: {formatCurrency(metrics.revenue?.razorpayRevenue)}</span>
+            <span>Manual UPI Recognized Revenue</span>
           </div>
         </div>
       </div>

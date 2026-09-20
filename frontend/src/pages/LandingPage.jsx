@@ -1109,29 +1109,29 @@ function LandingPage() {
             gap: "24px"
           }}
         >
-          {/* Method 1: Razorpay */}
+          {/* Channel 1: Dynamic UPI QR */}
           <div style={{ background: "#1a1d29", padding: "32px", borderRadius: "16px", border: "1px solid rgba(255, 255, 255, 0.08)", display: "flex", flexDirection: "column", gap: "16px" }}>
             <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(59, 130, 246, 0.12)", color: "#60a5fa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>
-              <FiCreditCard />
+              <FiZap />
             </div>
-            <h3 style={{ fontSize: "1.2rem", fontWeight: 700 }}>Razorpay Checkout</h3>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 700 }}>Dynamic UPI QR</h3>
             <p style={{ color: "#94a3b8", fontSize: "0.88rem", lineHeight: 1.6 }}>
-              Enjoy instant automated activation through our integrated Razorpay checkout modal.
+              Scan an automatically generated dynamic QR code with exact plan pricing (₹149/mo or ₹999/yr) from GPay, PhonePe, Paytm, or BHIM.
             </p>
           </div>
 
-          {/* Method 2: Manual UPI */}
+          {/* Channel 2: UTR & Admin Verification */}
           <div style={{ background: "#1a1d29", padding: "32px", borderRadius: "16px", border: "1px solid rgba(255, 255, 255, 0.08)", display: "flex", flexDirection: "column", gap: "16px" }}>
             <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(124, 58, 237, 0.12)", color: "#a78bfa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>
               <FiSmartphone />
             </div>
-            <h3 style={{ fontSize: "1.2rem", fontWeight: 700 }}>Manual UPI Verification</h3>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 700 }}>Manual UTR & Receipt Review</h3>
             <p style={{ color: "#94a3b8", fontSize: "0.88rem", lineHeight: 1.6 }}>
-              Pay via UPI QR code or UPI ID from any app, submit your transaction UTR and screenshot, and receive admin review.
+              Submit your 12-digit transaction UTR reference and payment screenshot for swift administrative verification and Pro activation.
             </p>
           </div>
 
-          {/* Method 3: Payment Support */}
+          {/* Channel 3: Payment Support */}
           <div style={{ background: "#1a1d29", padding: "32px", borderRadius: "16px", border: "1px solid rgba(255, 255, 255, 0.08)", display: "flex", flexDirection: "column", gap: "16px" }}>
             <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(16, 185, 129, 0.12)", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>
               <FiMessageSquare />

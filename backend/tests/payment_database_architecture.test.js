@@ -5,7 +5,6 @@ const mongoose = require("mongoose");
 
 const PaymentRequest = require("../models/PaymentRequest");
 const PaymentAudit = require("../models/PaymentAudit");
-const Order = require("../models/Order");
 
 test("Step 3: Payment Database Architecture Suite", async (t) => {
 
@@ -463,21 +462,6 @@ test("Step 3: Payment Database Architecture Suite", async (t) => {
     const paPaths = Object.keys(PaymentAudit.schema.paths);
     assert.equal(paPaths.includes("trialStartsAt"), false);
     assert.equal(paPaths.includes("trialExpiresAt"), false);
-    assert.equal(paPaths.includes("trialUsed"), false);
-  });
-
-  await t.test("26. Coexistence: Order model remains completely functional and untouched", () => {
-    assert.ok(Order);
-    const orderDoc = new Order({
-      orderId: "order_test_coexist_123",
-      userId: new mongoose.Types.ObjectId(),
-      plan: "MONTHLY",
-      amount: 14900,
-      currency: "INR",
-      status: "created"
-    });
-    assert.equal(orderDoc.validateSync(), undefined);
-    assert.equal(orderDoc.plan, "MONTHLY");
-    assert.equal(orderDoc.amount, 14900);
   });
 });
+

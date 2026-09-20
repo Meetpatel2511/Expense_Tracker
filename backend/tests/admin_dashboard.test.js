@@ -8,7 +8,6 @@ const mongoose = require("mongoose");
 
 const User = require("../models/User");
 const PaymentRequest = require("../models/PaymentRequest");
-const Order = require("../models/Order");
 const adminDashboardController = require("../controllers/adminDashboardController");
 
 // Setup minimal test Express app with mocked authentication & admin resolution
@@ -59,9 +58,6 @@ test("Step 5 Upgrade: Admin SaaS Dashboard, Subscriptions, Users & Analytics Sui
   const origFindPR = PaymentRequest.find;
   const origAggregatePR = PaymentRequest.aggregate;
 
-  const origAggregateOrder = Order.aggregate;
-  const origCountDocumentsOrder = Order.countDocuments;
-
   t.afterEach(() => {
     currentMockUserId = null;
     currentMockUserRole = "ADMIN";
@@ -73,9 +69,6 @@ test("Step 5 Upgrade: Admin SaaS Dashboard, Subscriptions, Users & Analytics Sui
     PaymentRequest.countDocuments = origCountDocumentsPR;
     PaymentRequest.find = origFindPR;
     PaymentRequest.aggregate = origAggregatePR;
-
-    Order.aggregate = origAggregateOrder;
-    Order.countDocuments = origCountDocumentsOrder;
   });
 
   const adminUserId = new mongoose.Types.ObjectId();
@@ -157,10 +150,6 @@ test("Step 5 Upgrade: Admin SaaS Dashboard, Subscriptions, Users & Analytics Sui
       { _id: null, totalPaise: 149000 } // ₹1,490 in manual UPI
     ];
 
-    Order.aggregate = async () => [
-      { _id: null, totalPaise: 999000 } // ₹9,990 in Razorpay
-    ];
-
     PaymentRequest.find = () => ({
       sort: () => ({
         limit: () => ({
@@ -217,8 +206,7 @@ test("Step 5 Upgrade: Admin SaaS Dashboard, Subscriptions, Users & Analytics Sui
 
     // Revenue validation
     assert.equal(res.body.metrics.revenue.manualUpiRevenue, 1490);
-    assert.equal(res.body.metrics.revenue.razorpayRevenue, 9990);
-    assert.equal(res.body.metrics.revenue.totalRecognizedRevenue, 11480);
+    assert.equal(res.body.metrics.revenue.totalRecognizedRevenue, 1490);
 
     // Recent lists validation
     assert.equal(res.body.recentPayments.length, 1);
@@ -361,10 +349,6 @@ test("Step 5 Upgrade: Admin SaaS Dashboard, Subscriptions, Users & Analytics Sui
       { _id: { year: currYear, month: currMonth }, totalPaise: 29800 } // ₹298
     ];
 
-    Order.aggregate = async () => [
-      { _id: { year: currYear, month: currMonth }, totalPaise: 99900 } // ₹999
-    ];
-
     User.countDocuments = async (query = {}) => {
       if (query.isPro && query.plan === "MONTHLY") return 20;
       if (query.isPro && query.plan === "YEARLY") return 10;
@@ -387,13 +371,12 @@ test("Step 5 Upgrade: Admin SaaS Dashboard, Subscriptions, Users & Analytics Sui
     assert.ok(Array.isArray(res.body.userGrowthTrend));
     assert.equal(res.body.userGrowthTrend.length, 6);
 
-    // Verify revenue channel separation in timeline
+    // Verify revenue channel timeline
     assert.ok(Array.isArray(res.body.revenueTrend));
     assert.equal(res.body.revenueTrend.length, 6);
     const currentMonthRev = res.body.revenueTrend[res.body.revenueTrend.length - 1];
     assert.equal(currentMonthRev.manualUpi, 298);
-    assert.equal(currentMonthRev.razorpay, 999);
-    assert.equal(currentMonthRev.total, 1297);
+    assert.equal(currentMonthRev.total, 298);
 
     // Verify plan distribution
     assert.equal(res.body.planDistribution[0].name, "Pro Monthly");

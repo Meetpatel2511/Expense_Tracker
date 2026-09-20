@@ -135,10 +135,10 @@ function AdminAnalytics() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
           <div>
             <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
-              <FiDollarSign style={{ color: "#10b981" }} /> Revenue Trend by Channel (INR)
+              <FiDollarSign style={{ color: "#10b981" }} /> 6-Month Revenue Trend (INR)
             </h3>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-              Monthly recognized revenue split across Manual UPI approvals and Razorpay gateway.
+              Monthly recognized revenue from approved Manual UPI payment requests.
             </p>
           </div>
         </div>
@@ -153,8 +153,7 @@ function AdminAnalytics() {
                 formatter={(value) => [`₹${Number(value).toLocaleString("en-IN")}`, undefined]}
               />
               <Legend wrapperStyle={{ fontSize: "0.8rem", paddingTop: "10px" }} />
-              <Bar dataKey="manualUpi" name="Manual UPI" fill="#a855f7" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="razorpay" name="Razorpay" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="manualUpi" name="Recognized Revenue (UPI)" fill="#a855f7" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

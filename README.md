@@ -1,6 +1,6 @@
 # Expense Tracker
 
-A full-stack personal finance and expense management web application designed to track expenses, manage budgets, automate recurring transactions, and deliver actionable financial insights. Built with React (Vite), Node.js, Express, and MongoDB, with secure authentication via Clerk and a verified Razorpay test-mode payment flow.
+A full-stack personal finance and expense management web application designed to track expenses, manage budgets, automate recurring transactions, and deliver actionable financial insights. Built with React (Vite), Node.js, Express, and MongoDB, with secure authentication via Clerk and a verified Manual UPI payment and administrative review workflow.
 
 ---
 
@@ -13,7 +13,7 @@ Managing personal finances often involves juggling multiple spending categories,
 - **Budget Discipline**: Set category-specific monthly budget caps with live visual progress and overrun notifications.
 - **Automation**: Schedule recurring bills (daily, weekly, monthly, yearly) that process automatically upon dashboard access.
 - **Collaborative Tracking**: Create or join family groups to aggregate household spending and view member contributions.
-- **Portfolio Demonstration**: Showcases production-grade engineering practices including server-side cryptographic payment verification, strict input validation, centralized error handling, and automated integration test coverage.
+- **Portfolio Demonstration**: Showcases production-grade engineering practices including server-side audit logs, dynamic UPI QR generation, strict input validation, centralized error handling, and automated integration test coverage.
 
 ---
 
@@ -47,10 +47,12 @@ Managing personal finances often involves juggling multiple spending categories,
 - **Family Groups**: Create a shared household group with an auto-generated invite code.
 - **Member Aggregation**: View cumulative group spending alongside a breakdown of each member's individual contribution.
 
-### 💎 Pro Membership (Razorpay TEST Mode)
+### 💎 Pro Membership (Manual UPI Workflow)
 - **Feature Gating**: Pro-tier protection for advanced analytics, AI suggestions, and family group management via backend `requirePro` middleware.
-- **Test-Mode Checkout**: Integrated with the Razorpay Web Checkout SDK operating strictly in **TEST/DEVELOPMENT MODE**.
-- **Cryptographic Verification**: Server-side HMAC SHA-256 signature verification guarantees secure Pro status activation without real financial transactions.
+- **Transparent Plans**: Monthly (₹149 / 30 days) and Yearly (₹999 / 365 days).
+- **Dynamic QR Payment**: Generates compliant dynamic UPI intent links and QR codes with embedded payee credentials, amount, and transaction reference.
+- **Two-Step Verification**: Users submit their 12-digit bank UTR and payment screenshot receipt.
+- **Administrative Review & Activation**: Administrators verify submitted receipts and UTRs in the Admin Payment Dashboard. Server-side approval atomically activates Pro entitlements and records an immutable audit log.
 
 ### 📥 Data Export
 - **Excel (.xlsx)**: Export formatted transaction ledgers using SheetJS (`xlsx`).
@@ -65,7 +67,7 @@ Managing personal finances often involves juggling multiple spending categories,
 - **Framework**: [React 19](https://react.dev/) with [Vite](https://vite.dev/)
 - **Routing**: [React Router DOM v7](https://reactrouter.com/)
 - **Authentication**: [@clerk/clerk-react](https://clerk.com/)
-- **Charts & UI**: [Recharts](https://recharts.org/), [React Icons](https://react-icons.github.io/react-icons/)
+- **Charts & UI**: [Recharts](https://recharts.org/), [React Icons](https://react-icons.github.io/react-icons/), [qrcode.react](https://github.com/zpao/qrcode.react)
 - **Export Utilities**: [SheetJS (xlsx)](https://sheetjs.com/), [jsPDF](https://github.com/parallax/jsPDF), [jspdf-autotable](https://github.com/simonbengtsson/jsPDF-AutoTable)
 - **HTTP Client**: [Axios](https://axios-http.com/)
 
@@ -74,14 +76,14 @@ Managing personal finances often involves juggling multiple spending categories,
 - **Web Framework**: [Express 5](https://expressjs.com/)
 - **Database ODM**: [Mongoose 9](https://mongoosejs.com/)
 - **Authentication**: [@clerk/clerk-sdk-node](https://clerk.com/)
-- **Security & Utilities**: `express-rate-limit`, `cors`, `dotenv`, `crypto`
+- **Security & Utilities**: `express-rate-limit`, `cors`, `dotenv`, `multer`, `sharp`
 
 ### Database
 - **Engine**: [MongoDB](https://www.mongodb.com/) (Self-hosted or MongoDB Atlas)
-- **Indexing**: Targeted compound indexes for optimized time-series and user-scoped lookups.
+- **Indexing**: Targeted compound indexes for optimized time-series, user-scoped lookups, and unique payment request tracking.
 
 ### Payments & Testing
-- **Payment Gateway**: [Razorpay](https://razorpay.com/) (*Strictly TEST/Development Mode*)
+- **Payment Method**: Manual UPI (Dynamic QR, UTR verification, Admin approval)
 - **Test Runner**: Node.js Native Test Runner (`node:test`, `node:assert/strict`)
 - **HTTP Testing**: [Supertest](https://github.com/ladjs/supertest)
 
@@ -94,12 +96,12 @@ flowchart TD
     subgraph Client["Frontend (React + Vite)"]
         UI[React UI Components / Pages]
         AuthClient[Clerk React SDK]
-        RzpModal[Razorpay Checkout SDK Modal]
+        UpiModal[Dynamic UPI Modal / Receipt Upload]
     end
 
     subgraph AuthProvider["External Services"]
         ClerkAuth[Clerk Authentication API]
-        RzpGateway[Razorpay Test Gateway]
+        UpiApp[UPI Apps: GPay / PhonePe / Paytm]
     end
 
     subgraph Server["Backend (Node.js + Express 5)"]
@@ -108,7 +110,7 @@ flowchart TD
         ProGuard[Pro Access Guard]
         ErrorHandler[Centralized Error Handler]
         Controllers[API Controllers]
-        VerifyModule[Payment Verification Module\nHMAC SHA-256]
+        AdminApproval[Admin Payment Review & Activation]
     end
 
     subgraph Database["Database (MongoDB)"]
@@ -118,17 +120,19 @@ flowchart TD
         BudgetCol[(Budgets)]
         RecurCol[(Recurring Expenses)]
         FamilyCol[(Families)]
+        PaymentReqCol[(Payment Requests)]
+        AuditCol[(Payment Audit Logs)]
     end
 
     UI -->|JWT Bearer Token| Middleware
     AuthClient <-->|Session Tokens| ClerkAuth
-    RzpModal <-->|Test Checkout Callback| RzpGateway
-    UI -->|Forward Payment Payload| Controllers
+    UpiModal -->|Pay via Intent/QR| UpiApp
+    UpiModal -->|Submit UTR & Receipt| Controllers
 
     Middleware --> Validation
     Validation --> ProGuard
     ProGuard --> Controllers
-    Controllers --> VerifyModule
+    AdminApproval --> Controllers
     Controllers --> Database
     Controllers --> ErrorHandler
 ```
@@ -139,10 +143,10 @@ flowchart TD
 
 The codebase has undergone comprehensive security hardening:
 
-1. **Cryptographic Payment Verification**:
-   - Upgrades to Pro require server-side HMAC SHA-256 signature verification (`orderId|paymentId`).
-   - Constant-time string comparison (`crypto.timingSafeEqual`) prevents timing attack vulnerabilities.
-   - Razorpay secret keys are **never** bundled or exposed to frontend code.
+1. **Manual UPI Payment Workflow & Verification**:
+   - Upgrades to Pro follow a secure two-step manual verification workflow.
+   - Users submit transaction UTR numbers and receipt screenshots after making UPI payments.
+   - Pro entitlement is activated strictly server-side by authenticated administrators.
    - All development-mode bypasses and unverified client status activations are strictly prohibited.
 
 2. **Strict Request Validation & Sanitization**:
@@ -177,6 +181,7 @@ Targeted compound indexes have been implemented to ensure rapid query execution 
 | `Income` | `{ user: 1, date: -1 }` | Optimized income history retrieval and dashboard cashflow calculations |
 | `Budget` | `{ user: 1, month: 1, year: 1, category: 1 }` | Fast lookup of monthly budget limits per category |
 | `RecurringExpense` | `{ user: 1, nextDate: 1 }` | Rapid batch discovery of overdue recurring expenses upon dashboard load |
+| `PaymentRequest` | `{ utr: 1 }` (unique, sparse) | Prevents duplicate UTR submission across manual payment requests |
 
 ---
 
@@ -191,12 +196,12 @@ npm test
 
 ### Test Coverage Areas:
 - **API Security & Route Protection**: Verified health check endpoints, 404 handler responses, and 401 Unauthorized rejection for protected routes.
-- **HTTP Payment Upgrade Endpoint**: Verified missing field rejection, forged signature rejection, tampered parameter rejection, and successful upgrade paths.
-- **Payment Verification Module**: Cryptographic HMAC SHA-256 verification and timing-safe equality.
+- **Admin Payment Approval Workflow**: Verified end-to-end admin review, approval idempotency, rejection, and Pro entitlement extension.
+- **Manual UPI Payment Workflow**: Verified dynamic config, UTR submission, duplicate protection, and file upload safety.
+- **Payment Gateway Removal**: Regression tests verifying removed Razorpay endpoints return 404 and cannot be exploited.
 - **Pro Access Middleware**: Access enforcement for Pro-only endpoints.
 - **Input Validation Helpers**: ObjectId format validation, amount bounds, date parsing, and pagination clamping.
 - **Recurring Expense Processing**: Schema field integrity and date interval calculation (Daily, Weekly, Monthly, Yearly).
-- **Route Parameter Validation**: 400 Bad Request rejection for malformed ObjectIds on PUT/DELETE endpoints.
 
 ---
 
@@ -206,7 +211,6 @@ npm test
 - **Node.js**: v18.0.0 or higher (v20+ recommended)
 - **MongoDB**: Local MongoDB server or free MongoDB Atlas URI
 - **Clerk Account**: Free development application keys from [clerk.com](https://clerk.com)
-- **Razorpay Account**: Free test key identifier from [razorpay.com](https://razorpay.com)
 
 ---
 
@@ -232,8 +236,8 @@ npm test
    MONGO_URI=mongodb://localhost:27017/expense_tracker
    CLERK_SECRET_KEY=sk_test_your_clerk_secret_key
    CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_publishable_key
-   RAZORPAY_KEY_ID=rzp_test_your_key_id
-   RAZORPAY_KEY_SECRET=rzp_test_your_key_secret
+   UPI_PAYEE_VPA=fintrack@upi
+   UPI_PAYEE_NAME=FinTrack Financials
    ```
 
 3. **Frontend Setup**:
@@ -246,7 +250,6 @@ npm test
    ```env
    VITE_API_URL=http://localhost:5000/api
    VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_publishable_key
-   VITE_RAZORPAY_KEY_ID=rzp_test_your_key_id
    ```
 
 ---
@@ -282,33 +285,32 @@ Expense_Tracker/
 ├── backend/
 │   ├── config/             # Database connection configuration
 │   ├── controllers/        # Request handling and business logic
+│   │   ├── adminDashboardController.js
+│   │   ├── adminPaymentController.js
 │   │   ├── budgetController.js
 │   │   ├── expenseController.js
 │   │   ├── familyController.js
 │   │   ├── incomeController.js
+│   │   ├── paymentRequestController.js
 │   │   └── userController.js
 │   ├── middleware/         # Express middleware
 │   │   ├── authMiddleware.js
 │   │   ├── errorHandler.js
 │   │   ├── proMiddleware.js
+│   │   ├── uploadMiddleware.js
 │   │   └── validation.js
 │   ├── models/             # Mongoose schemas & indexes
 │   │   ├── Budget.js
 │   │   ├── Expense.js
 │   │   ├── Family.js
 │   │   ├── Income.js
+│   │   ├── PaymentAudit.js
+│   │   ├── PaymentRequest.js
 │   │   ├── RecurringExpense.js
 │   │   └── User.js
 │   ├── routes/             # API route definitions
 │   ├── tests/              # Automated unit & integration tests
-│   │   ├── api_security.test.js
-│   │   ├── payment_upgrade_endpoint.test.js
-│   │   ├── payment_verification.test.js
-│   │   ├── pro_middleware.test.js
-│   │   ├── recurring_expense.test.js
-│   │   ├── validation.test.js
-│   │   └── validation_endpoints.test.js
-│   ├── utils/              # Helper utilities (HMAC signature verification)
+│   ├── utils/              # Helper utilities
 │   ├── .env.example        # Backend environment template
 │   ├── package.json
 │   └── server.js           # Main Express server entrypoint
@@ -319,16 +321,18 @@ Expense_Tracker/
 │   │   │   ├── Charts.jsx
 │   │   │   ├── DashboardAlerts.jsx
 │   │   │   ├── MonthlyBudgetCard.jsx
-│   │   │   ├── RazorpayCheckout.jsx
 │   │   │   ├── TransactionTable.jsx
-│   │   │   └── UpgradeModal.jsx
+│   │   │   ├── UpgradeModal.jsx
+│   │   │   └── UpiPaymentModal.jsx
 │   │   ├── context/        # React context providers (ProContext)
 │   │   ├── pages/          # Application views
 │   │   │   ├── AddExpense.jsx
 │   │   │   ├── AddIncome.jsx
+│   │   │   ├── AdminDashboard.jsx
 │   │   │   ├── Budget.jsx
 │   │   │   ├── Dashboard.jsx
 │   │   │   ├── Family.jsx
+│   │   │   ├── LandingPage.jsx
 │   │   │   └── Profile.jsx
 │   │   ├── utils/          # API client & data export utilities
 │   │   ├── App.jsx

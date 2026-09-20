@@ -1,6 +1,5 @@
 const User = require("../models/User");
 const PaymentRequest = require("../models/PaymentRequest");
-const Order = require("../models/Order");
 
 /**
  * 1. GET /api/admin/dashboard
@@ -20,7 +19,6 @@ exports.getDashboardOverview = async (req, res) => {
       needsInfoPaymentsCount,
       rejectedPaymentsCount,
       approvedPaymentsAggregate,
-      paidOrdersAggregate,
       recentPayments,
       recentRegistrations
     ] = await Promise.all([
@@ -67,13 +65,7 @@ exports.getDashboardOverview = async (req, res) => {
         { $group: { _id: null, totalPaise: { $sum: "$amount" } } }
       ]),
 
-      // 10. Razorpay Revenue from paid Orders (amount stored in paise)
-      Order.aggregate([
-        { $match: { status: "paid" } },
-        { $group: { _id: null, totalPaise: { $sum: "$amount" } } }
-      ]),
-
-      // 11. Recent 5 Payment Requests
+      // 10. Recent 5 Payment Requests
       PaymentRequest.find()
         .sort({ createdAt: -1 })
         .limit(5)
@@ -81,7 +73,7 @@ exports.getDashboardOverview = async (req, res) => {
         .select("plan amount status utr createdAt userId")
         .lean(),
 
-      // 12. Recent 5 User Registrations
+      // 11. Recent 5 User Registrations
       User.find()
         .sort({ createdAt: -1 })
         .limit(5)
@@ -90,10 +82,8 @@ exports.getDashboardOverview = async (req, res) => {
     ]);
 
     const manualUpiRevenuePaise = approvedPaymentsAggregate[0]?.totalPaise || 0;
-    const razorpayRevenuePaise = paidOrdersAggregate[0]?.totalPaise || 0;
     const manualUpiRevenue = Math.round(manualUpiRevenuePaise / 100);
-    const razorpayRevenue = Math.round(razorpayRevenuePaise / 100);
-    const totalRecognizedRevenue = manualUpiRevenue + razorpayRevenue;
+    const totalRecognizedRevenue = manualUpiRevenue;
 
     const freeUsers = Math.max(0, totalUsers - activeProSubscribers);
 
@@ -108,7 +98,6 @@ exports.getDashboardOverview = async (req, res) => {
         pendingPaymentReviews,
         revenue: {
           manualUpiRevenue,
-          razorpayRevenue,
           totalRecognizedRevenue
         }
       },
@@ -344,7 +333,6 @@ exports.getAnalytics = async (req, res) => {
     const [
       userRegistrationsByMonth,
       manualUpiRevenueByMonth,
-      razorpayRevenueByMonth,
       planDistributionData,
       paymentStatusCounts
     ] = await Promise.all([
@@ -378,22 +366,7 @@ exports.getAnalytics = async (req, res) => {
         { $sort: { "_id.year": 1, "_id.month": 1 } }
       ]),
 
-      // 3. Razorpay revenue by month (paid Orders)
-      Order.aggregate([
-        { $match: { status: "paid", createdAt: { $gte: sixMonthsAgo } } },
-        {
-          $group: {
-            _id: {
-              year: { $year: "$createdAt" },
-              month: { $month: "$createdAt" }
-            },
-            totalPaise: { $sum: "$amount" }
-          }
-        },
-        { $sort: { "_id.year": 1, "_id.month": 1 } }
-      ]),
-
-      // 4. Plan distribution
+      // 3. Plan distribution
       Promise.all([
         User.countDocuments({ isPro: true, proExpiresAt: { $gt: now }, plan: "MONTHLY" }),
         User.countDocuments({ isPro: true, proExpiresAt: { $gt: now }, plan: "YEARLY" }),
@@ -402,7 +375,7 @@ exports.getAnalytics = async (req, res) => {
         })
       ]),
 
-      // 5. Payment request status breakdown
+      // 4. Payment request status breakdown
       Promise.all([
         PaymentRequest.countDocuments({ status: "APPROVED" }),
         PaymentRequest.countDocuments({ status: "REJECTED" }),
@@ -436,18 +409,13 @@ exports.getAnalytics = async (req, res) => {
       const upiMatch = manualUpiRevenueByMonth.find(
         (r) => r._id.year === m.year && r._id.month === m.month
       );
-      const rzpMatch = razorpayRevenueByMonth.find(
-        (r) => r._id.year === m.year && r._id.month === m.month
-      );
 
       const manualUpi = Math.round((upiMatch?.totalPaise || 0) / 100);
-      const razorpay = Math.round((rzpMatch?.totalPaise || 0) / 100);
 
       return {
         month: m.label,
         manualUpi,
-        razorpay,
-        total: manualUpi + razorpay
+        total: manualUpi
       };
     });
 

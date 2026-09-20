@@ -3,7 +3,6 @@ import { useUser } from "@clerk/clerk-react";
 import { NavLink } from "react-router-dom";
 import { FiGrid, FiPlusCircle, FiPieChart, FiUsers, FiTrendingUp, FiHelpCircle, FiX, FiShield, FiStar } from "react-icons/fi";
 import UpgradeModal from "./UpgradeModal";
-import API from "../utils/api";
 import { usePro } from "../context/ProContext";
 import { useAdmin } from "../context/AdminContext";
 
@@ -20,21 +19,6 @@ function Sidebar({ isOpen, toggleSidebar }) {
   const { isPro, refreshProStatus } = usePro();
   const { isAdmin } = useAdmin();
   const [showModal, setShowModal] = useState(false);
-
-  const handleUpgrade = async (paymentData) => {
-    if (!paymentData) return;
-    try {
-      const res = await API.post("/user/upgrade-pro", paymentData);
-      if (res.data.isPro) {
-        await refreshProStatus();
-        setShowModal(false);
-        alert("🎉 You are now a Pro user! All features unlocked.");
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || "Upgrade failed. Please try again.");
-      console.error("Upgrade error:", err);
-    }
-  };
 
   return (
     <aside className={`sidebar ${isOpen ? "open" : ""}`}>
@@ -237,7 +221,6 @@ function Sidebar({ isOpen, toggleSidebar }) {
       {showModal && (
         <UpgradeModal 
           onClose={() => setShowModal(false)}
-          onUpgrade={handleUpgrade}
         />
       )}
 
