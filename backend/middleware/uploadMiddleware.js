@@ -3,10 +3,15 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 
-// Ensure private receipts directory exists
+// Ensure private receipts and support directories exist
 const receiptsDir = path.join(__dirname, "../uploads/receipts");
 if (!fs.existsSync(receiptsDir)) {
   fs.mkdirSync(receiptsDir, { recursive: true });
+}
+
+const supportDir = path.join(__dirname, "../uploads/support");
+if (!fs.existsSync(supportDir)) {
+  fs.mkdirSync(supportDir, { recursive: true });
 }
 
 // 5 MB maximum file size
@@ -145,6 +150,71 @@ const processReceiptUpload = (fieldName = "screenshot") => {
 };
 
 /**
+ * Middleware wrapper for payment support message attachments.
+ * Enforces magic-byte signature validation and persists to private support storage.
+ */
+const processSupportUpload = (fieldName = "attachment") => {
+  const uploadSingle = upload.single(fieldName);
+
+  return (req, res, next) => {
+    uploadSingle(req, res, (err) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({
+            message: "Attachment must not exceed 5 MB.",
+            code: "FILE_TOO_LARGE"
+          });
+        }
+        if (err.code === "INVALID_FILE_TYPE") {
+          return res.status(400).json({
+            message: "Invalid file type. Only JPEG, PNG, and WebP images are accepted.",
+            code: "INVALID_FILE_TYPE"
+          });
+        }
+        return res.status(400).json({
+          message: err.message || "File upload failed",
+          code: "UPLOAD_ERROR"
+        });
+      }
+
+      // If no attachment uploaded in this request
+      if (!req.file) {
+        return next();
+      }
+
+      // Deep inspection: verify file signature / magic bytes
+      const detected = detectImageSignature(req.file.buffer);
+      if (!detected) {
+        return res.status(400).json({
+          message: "Uploaded attachment is corrupted or not a valid JPEG, PNG, or WebP image.",
+          code: "INVALID_FILE_SIGNATURE"
+        });
+      }
+
+      const randomHex = crypto.randomBytes(8).toString("hex");
+      const safeFilename = `${Date.now()}_${randomHex}.${detected.ext}`;
+      const absolutePath = path.join(supportDir, safeFilename);
+
+      try {
+        fs.writeFileSync(absolutePath, req.file.buffer);
+        req.file.savedFilename = safeFilename;
+        req.file.attachmentRef = `support/${safeFilename}`;
+        req.file.detectedMime = detected.mime;
+        req.file.detectedExt = detected.ext;
+        req.file.absolutePath = absolutePath;
+        next();
+      } catch (writeErr) {
+        console.error("Support Attachment Storage Write Error:", writeErr);
+        return res.status(500).json({
+          message: "Failed to store attachment securely.",
+          code: "STORAGE_ERROR"
+        });
+      }
+    });
+  };
+};
+
+/**
  * Safely removes a stored receipt file in case of downstream database rollback.
  * @param {string} screenshotRef - Relative reference e.g. "receipts/123_abc.jpg"
  */
@@ -161,10 +231,30 @@ const cleanupReceiptFile = (screenshotRef) => {
   }
 };
 
+/**
+ * Safely removes a stored support attachment in case of downstream database rollback.
+ * @param {string} attachmentRef - Relative reference e.g. "support/123_abc.jpg"
+ */
+const cleanupSupportFile = (attachmentRef) => {
+  if (!attachmentRef || typeof attachmentRef !== "string") return;
+  const basename = path.basename(attachmentRef);
+  const targetPath = path.join(supportDir, basename);
+  if (fs.existsSync(targetPath)) {
+    try {
+      fs.unlinkSync(targetPath);
+    } catch (e) {
+      console.warn("Failed to clean up orphan support file:", targetPath, e.message);
+    }
+  }
+};
+
 module.exports = {
   processReceiptUpload,
+  processSupportUpload,
   cleanupReceiptFile,
+  cleanupSupportFile,
   detectImageSignature,
   MAX_FILE_SIZE,
-  receiptsDir
+  receiptsDir,
+  supportDir
 };

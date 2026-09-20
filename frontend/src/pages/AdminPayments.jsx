@@ -11,7 +11,8 @@ import {
   FiChevronRight,
   FiUser,
   FiCreditCard,
-  FiRotateCcw
+  FiRotateCcw,
+  FiMessageSquare
 } from "react-icons/fi";
 import API from "../utils/api";
 import Pagination from "../components/Pagination";
@@ -425,8 +426,29 @@ function AdminPayments() {
                     >
                       {/* Customer */}
                       <td style={{ padding: "16px 20px" }}>
-                        <div style={{ fontWeight: 700, color: "#fff" }}>
-                          {req.userId?.name || "Unknown User"}
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span style={{ fontWeight: 700, color: "#fff" }}>
+                            {req.userId?.name || "Unknown User"}
+                          </span>
+                          {req.unreadSupportCount > 0 && (
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                padding: "2px 7px",
+                                borderRadius: "999px",
+                                background: "rgba(239, 68, 68, 0.2)",
+                                border: "1px solid rgba(239, 68, 68, 0.4)",
+                                color: "#f87171",
+                                fontSize: "0.7rem",
+                                fontWeight: 700
+                              }}
+                              title={`${req.unreadSupportCount} unread user support message(s)`}
+                            >
+                              <FiMessageSquare style={{ fontSize: "0.72rem" }} /> {req.unreadSupportCount}
+                            </span>
+                          )}
                         </div>
                         <div style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>
                           {req.userId?.email || "No email"}
@@ -531,7 +553,10 @@ function AdminPayments() {
       {selectedRequestId && (
         <AdminPaymentDetailModal
           requestId={selectedRequestId}
-          onClose={() => setSelectedRequestId(null)}
+          onClose={() => {
+            setSelectedRequestId(null);
+            fetchQueue();
+          }}
           onActionCompleted={fetchQueue}
         />
       )}

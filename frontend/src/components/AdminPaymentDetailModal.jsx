@@ -25,11 +25,26 @@ function AdminPaymentDetailModal({ requestId, onClose, onActionCompleted }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Tab state: 'OVERVIEW' | 'SUPPORT'
+  const [activeTab, setActiveTab] = useState("OVERVIEW");
+
   // Receipt blob state
   const [receiptUrl, setReceiptUrl] = useState(null);
   const [receiptLoading, setReceiptLoading] = useState(true);
   const [receiptError, setReceiptError] = useState(null);
   const [showFullImage, setShowFullImage] = useState(false);
+
+  // Support thread state
+  const [supportMessages, setSupportMessages] = useState([]);
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [supportError, setSupportError] = useState(null);
+  const [supportInputText, setSupportInputText] = useState("");
+  const [supportAttachment, setSupportAttachment] = useState(null);
+  const [supportAttachmentPreview, setSupportAttachmentPreview] = useState(null);
+  const [supportSending, setSupportSending] = useState(false);
+  const [supportBlobs, setSupportBlobs] = useState({});
+  const [supportZoomUrl, setSupportZoomUrl] = useState(null);
+  const [unreadSupportCount, setUnreadSupportCount] = useState(0);
 
   // Action dialog states
   const [activeAction, setActiveAction] = useState(null); // 'APPROVE' | 'REJECT' | 'REQUEST_INFO' | null
@@ -38,6 +53,8 @@ function AdminPaymentDetailModal({ requestId, onClose, onActionCompleted }) {
   const [rejectionReasonInput, setRejectionReasonInput] = useState("");
 
   const receiptBlobUrlRef = useRef(null);
+  const supportFileInputRef = useRef(null);
+  const supportEndRef = useRef(null);
 
   // Fetch request details
   const fetchDetails = async () => {
@@ -46,6 +63,7 @@ function AdminPaymentDetailModal({ requestId, onClose, onActionCompleted }) {
       setError(null);
       const res = await API.get(`/admin/payment-requests/${requestId}`);
       setData(res.data);
+      setUnreadSupportCount(res.data.unreadSupportCount || 0);
     } catch (err) {
       console.error("Error fetching payment request details:", err);
       setError(err.response?.data?.message || "Failed to load payment details.");
@@ -78,6 +96,22 @@ function AdminPaymentDetailModal({ requestId, onClose, onActionCompleted }) {
     }
   };
 
+  // Fetch support thread messages (marks user messages as read by admin)
+  const fetchSupportMessages = async () => {
+    try {
+      setSupportLoading(true);
+      setSupportError(null);
+      const res = await API.get(`/admin/payment-requests/${requestId}/support`);
+      setSupportMessages(res.data.messages || []);
+      setUnreadSupportCount(0);
+    } catch (err) {
+      console.error("Error fetching admin support thread:", err);
+      setSupportError(err.response?.data?.message || "Failed to load support messages.");
+    } finally {
+      setSupportLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (requestId) {
       fetchDetails();
@@ -90,6 +124,98 @@ function AdminPaymentDetailModal({ requestId, onClose, onActionCompleted }) {
       }
     };
   }, [requestId]);
+
+  useEffect(() => {
+    if (activeTab === "SUPPORT") {
+      fetchSupportMessages();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "SUPPORT" && supportMessages.length > 0) {
+      supportEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [supportMessages, activeTab]);
+
+  // Support attachment selection
+  const handleSupportFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      toast.error("Only JPEG, PNG, and WebP images are allowed.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Attachment must not exceed 5 MB.");
+      return;
+    }
+
+    setSupportAttachment(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setSupportAttachmentPreview(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const removeSupportAttachment = () => {
+    setSupportAttachment(null);
+    setSupportAttachmentPreview(null);
+    if (supportFileInputRef.current) supportFileInputRef.current.value = "";
+  };
+
+  // Stream private support attachment blob
+  const loadSupportAttachmentBlob = async (messageId) => {
+    if (supportBlobs[messageId]) {
+      setSupportZoomUrl(supportBlobs[messageId]);
+      return;
+    }
+
+    try {
+      const res = await API.get(`/admin/payment-requests/${requestId}/support/attachment/${messageId}`, {
+        responseType: "blob"
+      });
+      const blobUrl = URL.createObjectURL(res.data);
+      setSupportBlobs((prev) => ({ ...prev, [messageId]: blobUrl }));
+      setSupportZoomUrl(blobUrl);
+    } catch (err) {
+      toast.error("Failed to load attachment image.");
+    }
+  };
+
+  // Send admin response to support thread
+  const handleSendAdminSupport = async (e) => {
+    e?.preventDefault();
+    const trimmed = supportInputText.trim();
+    if (!trimmed && !supportAttachment) {
+      toast.error("Please enter a response or attach a screenshot.");
+      return;
+    }
+    if (trimmed.length > 2000) {
+      toast.error("Message cannot exceed 2000 characters.");
+      return;
+    }
+
+    setSupportSending(true);
+    try {
+      const formData = new FormData();
+      if (trimmed) formData.append("message", trimmed);
+      if (supportAttachment) formData.append("attachment", supportAttachment);
+
+      const res = await API.post(`/admin/payment-requests/${requestId}/support`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
+      setSupportMessages((prev) => [...prev, res.data.message]);
+      setSupportInputText("");
+      removeSupportAttachment();
+      toast.success("Support reply sent.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to send support reply.");
+    } finally {
+      setSupportSending(false);
+    }
+  };
 
   // Handle Approve
   const handleApprove = async () => {
@@ -224,6 +350,7 @@ function AdminPaymentDetailModal({ requestId, onClose, onActionCompleted }) {
   const audits = data?.auditTrail || [];
   const statusMeta = pr ? getStatusBadge(pr.status) : null;
 
+
   return (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 100000, padding: "16px" }}>
       <div
@@ -281,6 +408,72 @@ function AdminPaymentDetailModal({ requestId, onClose, onActionCompleted }) {
           </button>
         </div>
 
+        {/* Tab Navigation */}
+        <div
+          style={{
+            display: "flex",
+            borderBottom: "1px solid var(--border-color)",
+            background: "rgba(255, 255, 255, 0.01)",
+            padding: "0 32px"
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTab("OVERVIEW")}
+            style={{
+              padding: "14px 20px",
+              border: "none",
+              borderBottom: activeTab === "OVERVIEW" ? "2px solid var(--bg-accent)" : "2px solid transparent",
+              background: "transparent",
+              color: activeTab === "OVERVIEW" ? "#fff" : "var(--text-muted)",
+              fontWeight: activeTab === "OVERVIEW" ? 700 : 500,
+              fontSize: "0.85rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              transition: "all 0.2s ease"
+            }}
+          >
+            <FiCreditCard /> Overview & Audit
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("SUPPORT")}
+            style={{
+              padding: "14px 20px",
+              border: "none",
+              borderBottom: activeTab === "SUPPORT" ? "2px solid var(--bg-accent)" : "2px solid transparent",
+              background: "transparent",
+              color: activeTab === "SUPPORT" ? "#fff" : "var(--text-muted)",
+              fontWeight: activeTab === "SUPPORT" ? 700 : 500,
+              fontSize: "0.85rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              transition: "all 0.2s ease"
+            }}
+          >
+            <FiMessageSquare /> Support Thread
+            {unreadSupportCount > 0 && (
+              <span
+                style={{
+                  padding: "2px 7px",
+                  borderRadius: "10px",
+                  background: "#ef4444",
+                  color: "#fff",
+                  fontSize: "0.68rem",
+                  fontWeight: 800
+                }}
+              >
+                {unreadSupportCount}
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* Modal Body */}
         <div style={{ padding: "28px 32px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: "24px" }}>
           {loading ? (
@@ -302,7 +495,7 @@ function AdminPaymentDetailModal({ requestId, onClose, onActionCompleted }) {
               <FiAlertCircle style={{ fontSize: "2rem", color: "#ef4444", marginBottom: "8px" }} />
               <p style={{ color: "#ef4444", fontWeight: 600 }}>{error}</p>
             </div>
-          ) : pr ? (
+          ) : pr && activeTab === "OVERVIEW" ? (
             <>
               {/* Status Header Banner */}
               <div
@@ -592,8 +785,209 @@ function AdminPaymentDetailModal({ requestId, onClose, onActionCompleted }) {
                 )}
               </div>
             </>
+          ) : pr && activeTab === "SUPPORT" ? (
+            /* Support Thread Tab Panel */
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px", height: "100%" }}>
+              {/* Message List */}
+              <div
+                style={{
+                  minHeight: "260px",
+                  maxHeight: "420px",
+                  overflowY: "auto",
+                  padding: "16px",
+                  borderRadius: "14px",
+                  background: "rgba(255, 255, 255, 0.02)",
+                  border: "1px solid var(--border-color)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px"
+                }}
+              >
+                {supportLoading ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 0", gap: "8px" }}>
+                    <div
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        border: "2px solid rgba(124, 58, 237, 0.2)",
+                        borderTopColor: "var(--bg-accent)",
+                        borderRadius: "50%",
+                        animation: "spin 0.8s linear infinite"
+                      }}
+                    />
+                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Loading support messages...</span>
+                  </div>
+                ) : supportError ? (
+                  <div style={{ padding: "16px", color: "#fca5a5", textAlign: "center", fontSize: "0.85rem" }}>
+                    {supportError}
+                  </div>
+                ) : supportMessages.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-muted)" }}>
+                    <FiMessageSquare size={32} style={{ opacity: 0.4, marginBottom: "8px" }} />
+                    <p style={{ fontSize: "0.88rem", margin: 0, color: "#fff", fontWeight: 600 }}>No Support Messages Yet</p>
+                    <p style={{ fontSize: "0.78rem", margin: "4px 0 0" }}>Start a conversation or request clarification using the form below.</p>
+                  </div>
+                ) : (
+                  supportMessages.map((msg) => {
+                    const isStaff = msg.senderRole === "ADMIN";
+                    return (
+                      <div
+                        key={msg._id}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: isStaff ? "flex-end" : "flex-start",
+                          gap: "3px"
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                          <span style={{ fontWeight: 600, color: isStaff ? "#a78bfa" : "#fff" }}>
+                            {isStaff ? "Admin / You" : `Customer (${pr.userId?.name || pr.userId?.email || "User"})`}
+                          </span>
+                          <span>•</span>
+                          <span>{formatDateTime(msg.createdAt)}</span>
+                        </div>
+
+                        <div
+                          style={{
+                            maxWidth: "80%",
+                            padding: "10px 14px",
+                            borderRadius: isStaff ? "14px 4px 14px 14px" : "4px 14px 14px 14px",
+                            background: isStaff ? "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)" : "rgba(255, 255, 255, 0.05)",
+                            border: isStaff ? "none" : "1px solid rgba(255, 255, 255, 0.08)",
+                            color: "#fff",
+                            fontSize: "0.85rem",
+                            lineHeight: "1.45"
+                          }}
+                        >
+                          {msg.message && <div style={{ whiteSpace: "pre-wrap" }}>{msg.message}</div>}
+
+                          {msg.attachmentRef && (
+                            <div style={{ marginTop: msg.message ? "8px" : "0" }}>
+                              <button
+                                type="button"
+                                onClick={() => loadSupportAttachmentBlob(msg._id)}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  padding: "6px 10px",
+                                  borderRadius: "6px",
+                                  background: "rgba(0, 0, 0, 0.3)",
+                                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                                  color: "#fff",
+                                  fontSize: "0.75rem",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                <FiImage /> View Attached Proof ({msg.attachmentOriginalName || "Screenshot"})
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={supportEndRef} />
+              </div>
+
+              {/* Support Composer Form */}
+              <div style={{ padding: "16px", borderRadius: "14px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--border-color)" }}>
+                {supportAttachmentPreview && (
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "4px 8px",
+                      borderRadius: "6px",
+                      background: "rgba(124, 58, 237, 0.15)",
+                      border: "1px solid rgba(124, 58, 237, 0.3)",
+                      marginBottom: "8px",
+                      fontSize: "0.75rem",
+                      color: "#c4b5fd"
+                    }}
+                  >
+                    <FiImage /> {supportAttachment?.name}
+                    <button type="button" onClick={removeSupportAttachment} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer" }}>
+                      <FiX />
+                    </button>
+                  </div>
+                )}
+
+                <form onSubmit={handleSendAdminSupport} style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
+                  <input
+                    type="file"
+                    ref={supportFileInputRef}
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleSupportFileSelect}
+                    style={{ display: "none" }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => supportFileInputRef.current?.click()}
+                    title="Attach proof / explanation image (JPEG, PNG, WebP — max 5 MB)"
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "8px",
+                      background: supportAttachment ? "rgba(124, 58, 237, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid var(--border-color)",
+                      color: supportAttachment ? "#a78bfa" : "var(--text-secondary)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      fontSize: "1rem"
+                    }}
+                  >
+                    <FiImage />
+                  </button>
+
+                  <textarea
+                    rows={2}
+                    value={supportInputText}
+                    onChange={(e) => setSupportInputText(e.target.value)}
+                    placeholder="Reply to customer with verification instructions or updates..."
+                    maxLength={2000}
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      background: "#11131f",
+                      border: "1px solid var(--border-color)",
+                      color: "#fff",
+                      fontSize: "0.85rem",
+                      resize: "none"
+                    }}
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={supportSending || (!supportInputText.trim() && !supportAttachment)}
+                    style={{
+                      padding: "0 18px",
+                      height: "40px",
+                      borderRadius: "8px",
+                      border: "none",
+                      background: "var(--bg-accent)",
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: "0.82rem",
+                      cursor: supportSending || (!supportInputText.trim() && !supportAttachment) ? "not-allowed" : "pointer",
+                      opacity: supportSending || (!supportInputText.trim() && !supportAttachment) ? 0.5 : 1
+                    }}
+                  >
+                    {supportSending ? "Sending..." : "Reply"}
+                  </button>
+                </form>
+              </div>
+            </div>
           ) : null}
         </div>
+
 
         {/* Action Buttons Footer */}
         {pr && (
@@ -888,7 +1282,7 @@ function AdminPaymentDetailModal({ requestId, onClose, onActionCompleted }) {
         </div>
       )}
 
-      {/* Full Image Zoom Modal */}
+      {/* Full Image Zoom Modal for Primary Receipt */}
       {showFullImage && receiptUrl && (
         <div
           className="modal-overlay"
@@ -916,8 +1310,38 @@ function AdminPaymentDetailModal({ requestId, onClose, onActionCompleted }) {
           />
         </div>
       )}
+
+      {/* Support Thread Attachment Zoom Modal */}
+      {supportZoomUrl && (
+        <div
+          className="modal-overlay"
+          onClick={() => setSupportZoomUrl(null)}
+          style={{ zIndex: 100020, background: "rgba(0,0,0,0.95)" }}
+        >
+          <button
+            className="modal-close"
+            onClick={() => setSupportZoomUrl(null)}
+            style={{ position: "fixed", top: "24px", right: "24px", zIndex: 100021 }}
+          >
+            <FiX />
+          </button>
+          <img
+            src={supportZoomUrl}
+            alt="Support Attachment Preview"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              objectFit: "contain",
+              borderRadius: "12px",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.8)"
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
 export default AdminPaymentDetailModal;
+

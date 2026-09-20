@@ -2,8 +2,10 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const requireAdmin = require("../middleware/requireAdmin");
+const { processSupportUpload } = require("../middleware/uploadMiddleware");
 const adminPaymentController = require("../controllers/adminPaymentController");
 const adminDashboardController = require("../controllers/adminDashboardController");
+const paymentSupportController = require("../controllers/paymentSupportController");
 
 // All routes under /api/admin require authentication + ADMIN role
 router.use(authMiddleware);
@@ -44,5 +46,15 @@ router.post("/payment-requests/:id/approve", adminPaymentController.approve);
 router.post("/payment-requests/:id/reject", adminPaymentController.reject);
 router.post("/payment-requests/:id/request-info", adminPaymentController.requestInfo);
 
-module.exports = router;
+/**
+ * Admin Payment Support Routes
+ */
+router.get("/payment-requests/:id/support", paymentSupportController.getAdminSupportMessages);
+router.post(
+  "/payment-requests/:id/support",
+  processSupportUpload("attachment"),
+  paymentSupportController.sendAdminSupportMessage
+);
+router.get("/payment-requests/:id/support/attachment/:messageId", paymentSupportController.getAdminSupportAttachment);
 
+module.exports = router;

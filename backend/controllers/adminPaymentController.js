@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const PaymentRequest = require("../models/PaymentRequest");
 const PaymentAudit = require("../models/PaymentAudit");
+const PaymentSupportMessage = require("../models/PaymentSupportMessage");
 const User = require("../models/User");
 const { calculateProExpiration } = require("../middleware/proMiddleware");
 const { receiptsDir } = require("../middleware/uploadMiddleware");
@@ -74,13 +75,50 @@ exports.getQueue = async (req, res) => {
 
     const totalPages = Math.ceil(total / parsedLimit) || 1;
 
+    // Aggregate unread support messages (senderRole: USER, readByAdminAt: null) for the returned batch
+    let requestsWithUnread = requests.map(r => ({ ...r, unreadSupportCount: 0 }));
+    try {
+      const requestIds = requests.map(r => r._id);
+      if (requestIds.length > 0 && mongoose.connection.readyState === 1) {
+        const unreadAgg = await PaymentSupportMessage.aggregate([
+          {
+            $match: {
+              paymentRequestId: { $in: requestIds },
+              senderRole: "USER",
+              readByAdminAt: null
+            }
+          },
+          {
+            $group: {
+              _id: "$paymentRequestId",
+              unreadCount: { $sum: 1 }
+            }
+          }
+        ]);
+
+        const unreadMap = {};
+        (unreadAgg || []).forEach(item => {
+          if (item && item._id) {
+            unreadMap[item._id.toString()] = item.unreadCount;
+          }
+        });
+
+        requestsWithUnread = requests.map(r => ({
+          ...r,
+          unreadSupportCount: unreadMap[r._id.toString()] || 0
+        }));
+      }
+    } catch (aggErr) {
+      requestsWithUnread = requests.map(r => ({ ...r, unreadSupportCount: 0 }));
+    }
+
     res.json({
       success: true,
-      count: requests.length,
+      count: requestsWithUnread.length,
       total,
       page: parsedPage,
       totalPages,
-      requests
+      requests: requestsWithUnread
     });
   } catch (error) {
     console.error("Admin Payment Queue Error:", error);
@@ -121,10 +159,24 @@ exports.getDetail = async (req, res) => {
       .sort({ createdAt: -1 })
       .populate("performedBy", "name email role");
 
+    let unreadSupportCount = 0;
+    try {
+      if (mongoose.connection.readyState === 1) {
+        unreadSupportCount = await PaymentSupportMessage.countDocuments({
+          paymentRequestId: id,
+          senderRole: "USER",
+          readByAdminAt: null
+        });
+      }
+    } catch (countErr) {
+      unreadSupportCount = 0;
+    }
+
     res.json({
       success: true,
       paymentRequest,
-      auditTrail
+      auditTrail,
+      unreadSupportCount
     });
   } catch (error) {
     console.error("Admin Payment Detail Error:", error);
@@ -134,6 +186,8 @@ exports.getDetail = async (req, res) => {
     });
   }
 };
+
+
 
 /**
  * 3. GET /api/admin/payment-requests/:id/receipt

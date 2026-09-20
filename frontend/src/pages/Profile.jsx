@@ -10,32 +10,42 @@ import {
   FiExternalLink,
   FiCheckCircle,
   FiAlertCircle,
-  FiClock
+  FiClock,
+  FiMessageSquare,
+  FiChevronRight
 } from "react-icons/fi";
 import API from "../utils/api";
 import { usePro } from "../context/ProContext";
 import UpgradeModal from "../components/UpgradeModal";
+import PaymentSupportModal from "../components/PaymentSupportModal";
 
 function Profile() {
   const { user: clerkUser } = useUser();
   const { openUserProfile } = useClerk();
   const { isPro: contextIsPro, refreshProStatus } = usePro();
   const [profile, setProfile] = useState(null);
+  const [allPaymentRequests, setAllPaymentRequests] = useState([]);
   const [activePaymentRequest, setActivePaymentRequest] = useState(null);
+  const [unreadSupportCount, setUnreadSupportCount] = useState(0);
+  const [activeSupportRequest, setActiveSupportRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const fetchProfile = async () => {
     try {
-      const [profileRes, requestsRes] = await Promise.all([
+      const [profileRes, requestsRes, unreadRes] = await Promise.all([
         API.get("/user/profile"),
-        API.get("/payment-request/my-requests").catch(() => ({ data: [] }))
+        API.get("/payment-request/my-requests").catch(() => ({ data: [] })),
+        API.get("/payment-request/support/unread-summary").catch(() => ({ data: { unreadCount: 0 } }))
       ]);
       setProfile(profileRes.data);
-      const active = (requestsRes.data || []).find(
+      const reqList = requestsRes.data || [];
+      setAllPaymentRequests(reqList);
+      const active = reqList.find(
         (r) => r.status === "UNDER_REVIEW" || r.status === "NEEDS_MORE_INFO"
       );
       setActivePaymentRequest(active || null);
+      setUnreadSupportCount(unreadRes.data?.unreadCount || 0);
     } catch (err) {
       console.error("Error fetching profile:", err);
     } finally {
@@ -46,6 +56,7 @@ function Profile() {
   useEffect(() => {
     fetchProfile();
   }, []);
+
 
   const handleUpgrade = async (paymentData) => {
     if (!paymentData) return;
@@ -225,17 +236,55 @@ function Profile() {
               </div>
             </div>
           </div>
-          <span style={{
-            fontSize: '0.75rem', fontWeight: 700,
-            padding: '6px 12px', borderRadius: '8px',
-            background: activePaymentRequest.status === 'UNDER_REVIEW' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-            color: activePaymentRequest.status === 'UNDER_REVIEW' ? '#f59e0b' : '#ef4444',
-            border: `1px solid ${activePaymentRequest.status === 'UNDER_REVIEW' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
-          }}>
-            {activePaymentRequest.status === 'UNDER_REVIEW' ? 'UNDER REVIEW' : 'NEEDS INFO'}
-          </span>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: '0.75rem', fontWeight: 700,
+              padding: '6px 12px', borderRadius: '8px',
+              background: activePaymentRequest.status === 'UNDER_REVIEW' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+              color: activePaymentRequest.status === 'UNDER_REVIEW' ? '#f59e0b' : '#ef4444',
+              border: `1px solid ${activePaymentRequest.status === 'UNDER_REVIEW' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+            }}>
+              {activePaymentRequest.status === 'UNDER_REVIEW' ? 'UNDER REVIEW' : 'NEEDS INFO'}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setActiveSupportRequest(activePaymentRequest)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(124, 58, 237, 0.08) 100%)',
+                border: '1px solid rgba(124, 58, 237, 0.4)',
+                color: '#c4b5fd',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                position: 'relative'
+              }}
+            >
+              <FiMessageSquare /> Payment Support
+              {unreadSupportCount > 0 && (
+                <span style={{
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  background: '#ef4444',
+                  color: '#fff',
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  marginLeft: '2px'
+                }}>
+                  {unreadSupportCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       )}
+
 
       {/* Subscription Status Section */}
       <div className="card" style={{ padding: '28px', border: isProActive ? '1px solid rgba(124, 58, 237, 0.3)' : isExpired ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-light)' }}>
@@ -344,6 +393,110 @@ function Profile() {
         </div>
       </div>
 
+      {/* Payment Requests & Support History */}
+      {allPaymentRequests.length > 0 && (
+        <div className="card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FiCreditCard style={{ color: 'var(--bg-accent)' }} /> Payment Requests & Verification ({allPaymentRequests.length})
+            </h3>
+            {unreadSupportCount > 0 && (
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: '#ef4444',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                padding: '4px 10px',
+                borderRadius: '12px'
+              }}>
+                {unreadSupportCount} unread support message{unreadSupportCount > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {allPaymentRequests.map((pr) => {
+              const statusColor = pr.status === 'APPROVED'
+                ? '#10b981'
+                : pr.status === 'UNDER_REVIEW'
+                ? '#f59e0b'
+                : pr.status === 'NEEDS_MORE_INFO'
+                ? '#a78bfa'
+                : '#ef4444';
+              const statusBg = pr.status === 'APPROVED'
+                ? 'rgba(16, 185, 129, 0.1)'
+                : pr.status === 'UNDER_REVIEW'
+                ? 'rgba(245, 158, 11, 0.1)'
+                : pr.status === 'NEEDS_MORE_INFO'
+                ? 'rgba(124, 58, 237, 0.1)'
+                : 'rgba(239, 68, 68, 0.1)';
+
+              return (
+                <div
+                  key={pr._id}
+                  style={{
+                    padding: '14px 18px',
+                    borderRadius: '12px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem' }}>
+                          {pr.plan === 'YEARLY' ? 'Yearly Pro' : 'Monthly Pro'} (₹{pr.amount / 100})
+                        </span>
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          background: statusBg,
+                          color: statusColor
+                        }}>
+                          {pr.status}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        UTR: <span style={{ fontFamily: 'monospace', color: '#a78bfa' }}>{pr.utr}</span> • Submitted {new Date(pr.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveSupportRequest(pr)}
+                    style={{
+                      padding: '7px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(124, 58, 237, 0.3)',
+                      background: 'rgba(124, 58, 237, 0.1)',
+                      color: 'var(--bg-accent)',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <FiMessageSquare /> Support Thread <FiChevronRight />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Security & Identity Card */}
       <div className="card" style={{ padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
         <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'rgba(124, 58, 237, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bg-accent)', marginBottom: '8px' }}>
           <FiShield size={28} />
@@ -369,8 +522,21 @@ function Profile() {
           onUpgrade={handleUpgrade}
         />
       )}
+
+      {/* Payment Support Thread Modal */}
+      {activeSupportRequest && (
+        <PaymentSupportModal
+          requestId={activeSupportRequest._id}
+          paymentRequest={activeSupportRequest}
+          onClose={() => {
+            setActiveSupportRequest(null);
+            fetchProfile();
+          }}
+        />
+      )}
     </div>
   );
 }
 
 export default Profile;
+
