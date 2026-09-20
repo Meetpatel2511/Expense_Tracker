@@ -21,6 +21,7 @@ import {
   FiMenu,
   FiX
 } from "react-icons/fi";
+import BrandLogo from "../components/BrandLogo";
 
 function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -93,36 +94,7 @@ function LandingPage() {
           }}
         >
           {/* Logo */}
-          <Link
-            to="/"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              textDecoration: "none",
-              color: "#fff"
-            }}
-          >
-            <div
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "10px",
-                background: "linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "1.2rem",
-                color: "#fff",
-                boxShadow: "0 4px 14px rgba(124, 58, 237, 0.4)"
-              }}
-            >
-              <FiTrendingUp />
-            </div>
-            <span style={{ fontSize: "1.35rem", fontWeight: 800, letterSpacing: "-0.5px" }}>
-              Fin<span style={{ color: "#a78bfa" }}>Track</span>
-            </span>
-          </Link>
+          <BrandLogo variant="navbar" to="/" />
 
           {/* Desktop Navigation Links */}
           <nav
@@ -1354,25 +1326,7 @@ function LandingPage() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div
-              style={{
-                width: "28px",
-                height: "28px",
-                borderRadius: "8px",
-                background: "linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#fff",
-                fontSize: "0.9rem"
-              }}
-            >
-              <FiTrendingUp />
-            </div>
-            <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>FinTrack</span>
-            <span style={{ color: "#64748b", fontSize: "0.85rem", marginLeft: "12px" }}>
-              Personal & Family Wealth Management
-            </span>
+            <BrandLogo variant="navbar" size="sm" to="/" subtitle="Personal & Family Wealth Management" showTagline={true} />
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "20px", fontSize: "0.85rem", color: "#94a3b8" }}>

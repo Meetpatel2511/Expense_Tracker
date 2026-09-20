@@ -6,6 +6,7 @@ import { AdminProvider } from "./context/AdminContext";
 import { Toaster } from "react-hot-toast";
 
 import Layout from "./components/Layout";
+import BrandLogo from "./components/BrandLogo";
 import AdminRoute from "./components/AdminRoute";
 import AdminLayout from "./components/admin/AdminLayout";
 import LandingPage from "./pages/LandingPage";
@@ -149,7 +150,10 @@ function App() {
                 <Route 
                   path="/sign-in/*" 
                   element={
-                    <div className="auth-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', width: '100%' }}>
+                    <div className="auth-page" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', width: '100%', padding: '20px' }}>
+                      <div style={{ marginBottom: '24px' }}>
+                        <BrandLogo variant="full" size="lg" to="/" />
+                      </div>
                       <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />
                     </div>
                   } 
@@ -157,7 +161,10 @@ function App() {
                 <Route 
                   path="/sign-up/*" 
                   element={
-                    <div className="auth-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', width: '100%' }}>
+                    <div className="auth-page" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', width: '100%', padding: '20px' }}>
+                      <div style={{ marginBottom: '24px' }}>
+                        <BrandLogo variant="full" size="lg" to="/" />
+                      </div>
                       <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" />
                     </div>
                   } 

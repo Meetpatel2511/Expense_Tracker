@@ -11,6 +11,7 @@ import {
   FiX
 } from "react-icons/fi";
 import { useAdmin } from "../../context/AdminContext";
+import BrandLogo from "../BrandLogo";
 
 const adminNavItems = [
   { path: "/admin", icon: <FiGrid />, label: "Dashboard", end: true },
@@ -52,34 +53,8 @@ function AdminSidebar({ isOpen, toggleSidebar }) {
 
       {/* Admin Branding */}
       <div style={{ marginBottom: "28px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-          <div style={{
-            width: '34px',
-            height: '34px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontWeight: 800,
-            fontSize: '1.1rem',
-            boxShadow: '0 4px 12px rgba(124, 58, 237, 0.4)'
-          }}>
-            F
-          </div>
-          <NavLink
-            to="/admin"
-            style={{
-              fontSize: "1.3rem",
-              textDecoration: "none",
-              fontWeight: 800,
-              color: "#fff",
-              letterSpacing: "-0.3px"
-            }}
-          >
-            Fin<span style={{ color: "var(--bg-accent)" }}>Track</span>
-          </NavLink>
+        <div style={{ marginBottom: "8px" }}>
+          <BrandLogo variant="navbar" to="/admin" />
         </div>
         <div style={{ paddingLeft: "4px" }}>
           <span className="badge badge-pro" style={{ fontSize: "0.7rem", padding: "3px 8px" }}>

@@ -3,6 +3,7 @@ import { useUser } from "@clerk/clerk-react";
 import { NavLink } from "react-router-dom";
 import { FiGrid, FiPlusCircle, FiPieChart, FiUsers, FiTrendingUp, FiHelpCircle, FiX, FiShield, FiStar } from "react-icons/fi";
 import UpgradeModal from "./UpgradeModal";
+import BrandLogo from "./BrandLogo";
 import { usePro } from "../context/ProContext";
 import { useAdmin } from "../context/AdminContext";
 
@@ -48,39 +49,9 @@ function Sidebar({ isOpen, toggleSidebar }) {
       </button>
 
       {/* Logo */}
-      <NavLink 
-        to="/dashboard"
-        className="sidebar-logo" 
-        style={{ 
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          textDecoration: 'none', 
-          marginBottom: '32px', 
-          padding: '0 4px'
-        }}
-      >
-        <div style={{
-          width: '36px',
-          height: '36px',
-          borderRadius: '10px',
-          background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          fontWeight: 800,
-          fontSize: '1.2rem',
-          boxShadow: '0 4px 14px rgba(124, 58, 237, 0.4)'
-        }}>
-          F
-        </div>
-        <div>
-          <span style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>
-            Fin<span style={{ color: 'var(--bg-accent)' }}>Track</span>
-          </span>
-        </div>
-      </NavLink>
+      <div style={{ marginBottom: '32px', padding: '0 4px' }}>
+        <BrandLogo variant="navbar" to="/dashboard" />
+      </div>
 
       {/* User Profile Section */}
       <NavLink 
